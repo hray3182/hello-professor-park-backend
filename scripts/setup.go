@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// load env
-	godotenv.Overload(".env")
+	godotenv.Overload()
 	// 初始化資料庫連接
 	if err := database.InitDB(); err != nil {
 		log.Fatalf("資料庫連接失敗: %v", err)
