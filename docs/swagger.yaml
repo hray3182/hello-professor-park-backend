@@ -1,0 +1,807 @@
+basePath: /api/v1
+definitions:
+  dtos.ErrorResponse:
+    properties:
+      error:
+        example: Detailed error message
+        type: string
+    type: object
+  dtos.SuccessResponse:
+    properties:
+      message:
+        example: Operation successful
+        type: string
+    type: object
+  dtos.VehicleEntryExitPayload:
+    properties:
+      sensorID:
+        example: EntrySensor001
+        type: string
+      vehicleID:
+        example: 1
+        type: integer
+    required:
+    - vehicleID
+    type: object
+  dtos.VehicleSearchResult:
+    properties:
+      activeParkingRecord:
+        $ref: '#/definitions/models.ParkingRecord'
+      lastSeen:
+        description: LastSeen 最後一次感應到車輛的時間
+        type: string
+      licensePlate:
+        description: LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌
+        type: string
+      parkingRecords:
+        description: GORM 模型關聯定義
+        items:
+          $ref: '#/definitions/models.ParkingRecord'
+        type: array
+      vehicleID:
+        description: VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment
+        type: integer
+    type: object
+  models.ParkingRecord:
+    properties:
+      actualDurationMinutes:
+        description: ActualDurationMinutes 實際停車時長（分鐘）
+        type: integer
+      calculatedAmount:
+        description: CalculatedAmount 應付停車費用
+        type: number
+      entryTime:
+        description: EntryTime 進場時間
+        type: string
+      exitTime:
+        description: ExitTime 出場時間，如果尚未出場則為 NULL
+        type: string
+      paymentStatus:
+        description: PaymentStatus 支付狀態：Pending, Paid, Refunded
+        type: string
+      recordID:
+        description: RecordID 作為主鍵
+        type: integer
+      sensorEntryID:
+        description: SensorEntryID 入場感應器記錄ID
+        type: string
+      sensorExitID:
+        description: SensorExitID 出場感應器記錄ID
+        type: string
+      transaction:
+        $ref: '#/definitions/models.Transaction'
+      transactionID:
+        description: TransactionID 關聯到 Transactions 表的外鍵，如果尚未支付或無交易則為 NULL
+        type: integer
+      vehicle:
+        allOf:
+        - $ref: '#/definitions/models.Vehicle'
+        description: GORM 模型關聯定義
+      vehicleID:
+        description: VehicleID 關聯到 Vehicles 表的外鍵
+        type: integer
+    type: object
+  models.Transaction:
+    properties:
+      amount:
+        description: Amount 交易金額
+        type: number
+      parkingRecordID:
+        description: ParkingRecordID 關聯到 ParkingRecords 表的外鍵
+        type: integer
+      paymentGatewayResponse:
+        description: PaymentGatewayResponse 支付閘道回傳的詳細資訊 (JSON或TEXT)
+        type: string
+      paymentMethod:
+        description: PaymentMethod 付款方式，例如 "CreditCard", "MobilePay", "Cash"
+        type: string
+      status:
+        description: Status 交易狀態：Success, Failed, Refunded
+        type: string
+      transactionID:
+        description: TransactionID 作為主鍵
+        type: integer
+      transactionTime:
+        description: TransactionTime 交易時間
+        type: string
+    type: object
+  models.Vehicle:
+    properties:
+      lastSeen:
+        description: LastSeen 最後一次感應到車輛的時間
+        type: string
+      licensePlate:
+        description: LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌
+        type: string
+      parkingRecords:
+        description: GORM 模型關聯定義
+        items:
+          $ref: '#/definitions/models.ParkingRecord'
+        type: array
+      vehicleID:
+        description: VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the API documentation for the Hello Professor parking management
+    system.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Hello Professor API
+  version: "1.0"
+paths:
+  /parking-records:
+    get:
+      description: Get a list of all parking records, with pagination
+      parameters:
+      - default: 10
+        description: Limit number of parking records returned
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ParkingRecord'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get all parking records
+      tags:
+      - parking_records
+    post:
+      consumes:
+      - application/json
+      description: Add a new parking record to the system. This is a general endpoint,
+        for specific entry/exit events, use /parking-records/entry and /parking-records/exit.
+      parameters:
+      - description: Parking Record Information
+        in: body
+        name: parking_record_info
+        required: true
+        schema:
+          $ref: '#/definitions/models.ParkingRecord'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ParkingRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Create a new parking record
+      tags:
+      - parking_records
+  /parking-records/{id}:
+    delete:
+      description: Remove a parking record from the system by its ID
+      parameters:
+      - description: Parking Record ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Delete a parking record by ID
+      tags:
+      - parking_records
+    get:
+      description: Get details of a parking record by its ID
+      parameters:
+      - description: Parking Record ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ParkingRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get a parking record by ID
+      tags:
+      - parking_records
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing parking record by its ID. Can be
+        used for manual adjustments.
+      parameters:
+      - description: Parking Record ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Parking Record Update Information
+        in: body
+        name: parking_record_update
+        required: true
+        schema:
+          $ref: '#/definitions/models.ParkingRecord'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Update an existing parking record
+      tags:
+      - parking_records
+  /parking-records/entry:
+    post:
+      consumes:
+      - application/json
+      description: Records when a vehicle enters the parking lot.
+      parameters:
+      - description: Vehicle Entry Information
+        in: body
+        name: entry_info
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.VehicleEntryExitPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ParkingRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Record a vehicle entry event
+      tags:
+      - parking_records
+  /parking-records/exit:
+    post:
+      consumes:
+      - application/json
+      description: Records when a vehicle exits the parking lot and calculates fees.
+      parameters:
+      - description: Vehicle Exit Information
+        in: body
+        name: exit_info
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.VehicleEntryExitPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ParkingRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Record a vehicle exit event
+      tags:
+      - parking_records
+  /parking-records/vehicle/{vehicleID}:
+    get:
+      description: Get all parking records associated with a specific Vehicle ID
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: vehicleID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ParkingRecord'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get parking records by Vehicle ID
+      tags:
+      - parking_records
+  /parking-records/vehicle/{vehicleID}/latest:
+    get:
+      description: Get the most recent parking record for a specific Vehicle ID
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: vehicleID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ParkingRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get the latest parking record by Vehicle ID
+      tags:
+      - parking_records
+  /transactions:
+    get:
+      description: Get a list of all transactions, with pagination
+      parameters:
+      - default: 10
+        description: Limit number of transactions returned
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get all transactions
+      tags:
+      - transactions
+    post:
+      consumes:
+      - application/json
+      description: Add a new transaction to the system
+      parameters:
+      - description: Transaction Information
+        in: body
+        name: transaction_info
+        required: true
+        schema:
+          $ref: '#/definitions/models.Transaction'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Create a new transaction
+      tags:
+      - transactions
+  /transactions/{id}:
+    delete:
+      description: Remove a transaction from the system by its ID
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Delete a transaction by ID
+      tags:
+      - transactions
+    get:
+      description: Get details of a transaction by its ID
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get a transaction by ID
+      tags:
+      - transactions
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing transaction by its ID
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Transaction Update Information
+        in: body
+        name: transaction_update
+        required: true
+        schema:
+          $ref: '#/definitions/models.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Update an existing transaction
+      tags:
+      - transactions
+  /transactions/parking/{parkingRecordID}:
+    get:
+      description: Get all transactions associated with a specific ParkingRecord ID
+      parameters:
+      - description: Parking Record ID
+        in: path
+        name: parkingRecordID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Transaction'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get transactions by ParkingRecord ID
+      tags:
+      - transactions
+  /vehicles:
+    get:
+      description: Get a list of all vehicles, with pagination
+      parameters:
+      - default: 10
+        description: Limit number of vehicles returned
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Vehicle'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get all vehicles
+      tags:
+      - vehicles
+    post:
+      consumes:
+      - application/json
+      description: Add a new vehicle to the system
+      parameters:
+      - description: Vehicle Information
+        in: body
+        name: vehicle_info
+        required: true
+        schema:
+          $ref: '#/definitions/models.Vehicle'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Vehicle'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Create a new vehicle
+      tags:
+      - vehicles
+  /vehicles/{id}:
+    delete:
+      description: Remove a vehicle from the system by its ID
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Delete a vehicle by ID
+      tags:
+      - vehicles
+    get:
+      description: Get details of a vehicle by its ID
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Vehicle'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get a vehicle by ID
+      tags:
+      - vehicles
+    put:
+      consumes:
+      - application/json
+      description: Update details of an existing vehicle by its ID
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Vehicle Update Information
+        in: body
+        name: vehicle_update
+        required: true
+        schema:
+          $ref: '#/definitions/models.Vehicle'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dtos.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Update an existing vehicle
+      tags:
+      - vehicles
+  /vehicles/license/{plate}:
+    get:
+      description: Get details of a vehicle by its license plate
+      parameters:
+      - description: License Plate
+        in: path
+        name: plate
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Vehicle'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get a vehicle by license plate
+      tags:
+      - vehicles
+  /vehicles/search:
+    get:
+      description: Search for vehicles using a partial or potentially incorrect license
+        plate string. Returns a list of matching vehicles, each with their active
+        parking record if any.
+      parameters:
+      - description: License plate query string
+        in: query
+        name: query
+        required: true
+        type: string
+      - default: 5
+        description: Limit number of results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dtos.VehicleSearchResult'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Search vehicles by license plate (fuzzy search)
+      tags:
+      - vehicles
+schemes:
+- http
+- https
+swagger: "2.0"

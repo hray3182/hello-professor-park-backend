@@ -1,0 +1,1199 @@
+{
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the API documentation for the Hello Professor parking management system.",
+        "title": "Hello Professor API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/parking-records": {
+            "get": {
+                "description": "Get a list of all parking records, with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Get all parking records",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit number of parking records returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ParkingRecord"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new parking record to the system. This is a general endpoint, for specific entry/exit events, use /parking-records/entry and /parking-records/exit.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Create a new parking record",
+                "parameters": [
+                    {
+                        "description": "Parking Record Information",
+                        "name": "parking_record_info",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/entry": {
+            "post": {
+                "description": "Records when a vehicle enters the parking lot.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Record a vehicle entry event",
+                "parameters": [
+                    {
+                        "description": "Vehicle Entry Information",
+                        "name": "entry_info",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.VehicleEntryExitPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/exit": {
+            "post": {
+                "description": "Records when a vehicle exits the parking lot and calculates fees.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Record a vehicle exit event",
+                "parameters": [
+                    {
+                        "description": "Vehicle Exit Information",
+                        "name": "exit_info",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.VehicleEntryExitPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/vehicle/{vehicleID}": {
+            "get": {
+                "description": "Get all parking records associated with a specific Vehicle ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Get parking records by Vehicle ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Vehicle ID",
+                        "name": "vehicleID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ParkingRecord"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/vehicle/{vehicleID}/latest": {
+            "get": {
+                "description": "Get the most recent parking record for a specific Vehicle ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Get the latest parking record by Vehicle ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Vehicle ID",
+                        "name": "vehicleID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/{id}": {
+            "get": {
+                "description": "Get details of a parking record by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Get a parking record by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update details of an existing parking record by its ID. Can be used for manual adjustments.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Update an existing parking record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Parking Record Update Information",
+                        "name": "parking_record_update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove a parking record from the system by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Delete a parking record by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions": {
+            "get": {
+                "description": "Get a list of all transactions, with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get all transactions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit number of transactions returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Transaction"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new transaction to the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Create a new transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction Information",
+                        "name": "transaction_info",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Transaction"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Transaction"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/parking/{parkingRecordID}": {
+            "get": {
+                "description": "Get all transactions associated with a specific ParkingRecord ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get transactions by ParkingRecord ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "parkingRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Transaction"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/{id}": {
+            "get": {
+                "description": "Get details of a transaction by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get a transaction by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Transaction"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update details of an existing transaction by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Update an existing transaction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Transaction Update Information",
+                        "name": "transaction_update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Transaction"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove a transaction from the system by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Delete a transaction by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicles": {
+            "get": {
+                "description": "Get a list of all vehicles, with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Get all vehicles",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit number of vehicles returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Vehicle"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add a new vehicle to the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Create a new vehicle",
+                "parameters": [
+                    {
+                        "description": "Vehicle Information",
+                        "name": "vehicle_info",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Vehicle"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Vehicle"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicles/license/{plate}": {
+            "get": {
+                "description": "Get details of a vehicle by its license plate",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Get a vehicle by license plate",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "License Plate",
+                        "name": "plate",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Vehicle"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicles/search": {
+            "get": {
+                "description": "Search for vehicles using a partial or potentially incorrect license plate string. Returns a list of matching vehicles, each with their active parking record if any.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Search vehicles by license plate (fuzzy search)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "License plate query string",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 5,
+                        "description": "Limit number of results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dtos.VehicleSearchResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vehicles/{id}": {
+            "get": {
+                "description": "Get details of a vehicle by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Get a vehicle by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Vehicle ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Vehicle"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update details of an existing vehicle by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Update an existing vehicle",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Vehicle ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Vehicle Update Information",
+                        "name": "vehicle_update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Vehicle"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove a vehicle from the system by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vehicles"
+                ],
+                "summary": "Delete a vehicle by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Vehicle ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dtos.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "Detailed error message"
+                }
+            }
+        },
+        "dtos.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation successful"
+                }
+            }
+        },
+        "dtos.VehicleEntryExitPayload": {
+            "type": "object",
+            "required": [
+                "vehicleID"
+            ],
+            "properties": {
+                "sensorID": {
+                    "type": "string",
+                    "example": "EntrySensor001"
+                },
+                "vehicleID": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "dtos.VehicleSearchResult": {
+            "type": "object",
+            "properties": {
+                "activeParkingRecord": {
+                    "$ref": "#/definitions/models.ParkingRecord"
+                },
+                "lastSeen": {
+                    "description": "LastSeen 最後一次感應到車輛的時間",
+                    "type": "string"
+                },
+                "licensePlate": {
+                    "description": "LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌",
+                    "type": "string"
+                },
+                "parkingRecords": {
+                    "description": "GORM 模型關聯定義",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ParkingRecord"
+                    }
+                },
+                "vehicleID": {
+                    "description": "VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment",
+                    "type": "integer"
+                }
+            }
+        },
+        "models.ParkingRecord": {
+            "type": "object",
+            "properties": {
+                "actualDurationMinutes": {
+                    "description": "ActualDurationMinutes 實際停車時長（分鐘）",
+                    "type": "integer"
+                },
+                "calculatedAmount": {
+                    "description": "CalculatedAmount 應付停車費用",
+                    "type": "number"
+                },
+                "entryTime": {
+                    "description": "EntryTime 進場時間",
+                    "type": "string"
+                },
+                "exitTime": {
+                    "description": "ExitTime 出場時間，如果尚未出場則為 NULL",
+                    "type": "string"
+                },
+                "paymentStatus": {
+                    "description": "PaymentStatus 支付狀態：Pending, Paid, Refunded",
+                    "type": "string"
+                },
+                "recordID": {
+                    "description": "RecordID 作為主鍵",
+                    "type": "integer"
+                },
+                "sensorEntryID": {
+                    "description": "SensorEntryID 入場感應器記錄ID",
+                    "type": "string"
+                },
+                "sensorExitID": {
+                    "description": "SensorExitID 出場感應器記錄ID",
+                    "type": "string"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/models.Transaction"
+                },
+                "transactionID": {
+                    "description": "TransactionID 關聯到 Transactions 表的外鍵，如果尚未支付或無交易則為 NULL",
+                    "type": "integer"
+                },
+                "vehicle": {
+                    "description": "GORM 模型關聯定義",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Vehicle"
+                        }
+                    ]
+                },
+                "vehicleID": {
+                    "description": "VehicleID 關聯到 Vehicles 表的外鍵",
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Transaction": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "description": "Amount 交易金額",
+                    "type": "number"
+                },
+                "parkingRecordID": {
+                    "description": "ParkingRecordID 關聯到 ParkingRecords 表的外鍵",
+                    "type": "integer"
+                },
+                "paymentGatewayResponse": {
+                    "description": "PaymentGatewayResponse 支付閘道回傳的詳細資訊 (JSON或TEXT)",
+                    "type": "string"
+                },
+                "paymentMethod": {
+                    "description": "PaymentMethod 付款方式，例如 \"CreditCard\", \"MobilePay\", \"Cash\"",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status 交易狀態：Success, Failed, Refunded",
+                    "type": "string"
+                },
+                "transactionID": {
+                    "description": "TransactionID 作為主鍵",
+                    "type": "integer"
+                },
+                "transactionTime": {
+                    "description": "TransactionTime 交易時間",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Vehicle": {
+            "type": "object",
+            "properties": {
+                "lastSeen": {
+                    "description": "LastSeen 最後一次感應到車輛的時間",
+                    "type": "string"
+                },
+                "licensePlate": {
+                    "description": "LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌",
+                    "type": "string"
+                },
+                "parkingRecords": {
+                    "description": "GORM 模型關聯定義",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ParkingRecord"
+                    }
+                },
+                "vehicleID": {
+                    "description": "VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment",
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

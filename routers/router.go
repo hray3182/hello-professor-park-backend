@@ -1,0 +1,82 @@
+package routers
+
+import (
+	"hello-professor_backend/controllers"
+	"hello-professor_backend/docs" // 匯入 swag 產生的 docs
+	"hello-professor_backend/repositories"
+	"hello-professor_backend/services"
+
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"     // swagger embed files
+	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
+)
+
+func SetupRouter() *gin.Engine {
+	router := gin.Default()
+
+	// 初始化 Repositories
+	vehicleRepo := repositories.NewVehicleRepository()
+	transactionRepo := repositories.NewTransactionRepository()
+	parkingRecordRepo := repositories.NewParkingRecordRepository()
+
+	// 初始化 Services
+	vehicleService := services.NewVehicleService(vehicleRepo, parkingRecordRepo)
+	transactionService := services.NewTransactionService(transactionRepo)
+	// ParkingRecordService 需要 parkingRecordRepo 和 vehicleRepo
+	parkingRecordService := services.NewParkingRecordService(parkingRecordRepo, vehicleRepo)
+
+	// 初始化 Controllers
+	vehicleController := controllers.NewVehicleController(vehicleService)
+	transactionController := controllers.NewTransactionController(transactionService)
+	parkingRecordController := controllers.NewParkingRecordController(parkingRecordService)
+
+	// Swagger 文件的基本路徑，對應 main.go 中的 @BasePath
+	docs.SwaggerInfo.BasePath = "/api/v1"
+
+	// API v1 路由群組
+	apiV1 := router.Group("/api/v1")
+	{
+		// 車輛路由
+		vehicleRoutes := apiV1.Group("/vehicles")
+		{
+			vehicleRoutes.POST("", vehicleController.CreateVehicleHandler)
+			vehicleRoutes.GET("/search", vehicleController.SearchVehiclesHandler)
+			vehicleRoutes.GET("/:id", vehicleController.GetVehicleByIDHandler)
+			vehicleRoutes.GET("/license/:plate", vehicleController.GetVehicleByLicensePlateHandler)
+			vehicleRoutes.PUT("/:id", vehicleController.UpdateVehicleHandler)
+			vehicleRoutes.DELETE("/:id", vehicleController.DeleteVehicleHandler)
+			vehicleRoutes.GET("", vehicleController.GetAllVehiclesHandler)
+		}
+
+		// 交易路由
+		transactionRoutes := apiV1.Group("/transactions")
+		{
+			transactionRoutes.POST("", transactionController.CreateTransactionHandler)
+			transactionRoutes.GET("/:id", transactionController.GetTransactionByIDHandler)
+			transactionRoutes.GET("/parking/:parkingRecordID", transactionController.GetTransactionsByParkingRecordIDHandler)
+			transactionRoutes.PUT("/:id", transactionController.UpdateTransactionHandler)
+			transactionRoutes.DELETE("/:id", transactionController.DeleteTransactionHandler)
+			transactionRoutes.GET("", transactionController.GetAllTransactionsHandler)
+		}
+
+		// 停車記錄路由
+		parkingRecordRoutes := apiV1.Group("/parking-records")
+		{
+			parkingRecordRoutes.POST("/entry", parkingRecordController.RecordVehicleEntryHandler)
+			parkingRecordRoutes.POST("/exit", parkingRecordController.RecordVehicleExitHandler)
+			parkingRecordRoutes.POST("", parkingRecordController.CreateParkingRecordHandler) // 通用建立
+			parkingRecordRoutes.GET("/:id", parkingRecordController.GetParkingRecordByIDHandler)
+			parkingRecordRoutes.GET("/vehicle/:vehicleID", parkingRecordController.GetParkingRecordsByVehicleIDHandler)
+			parkingRecordRoutes.GET("/vehicle/:vehicleID/latest", parkingRecordController.GetLatestParkingRecordByVehicleIDHandler)
+			parkingRecordRoutes.PUT("/:id", parkingRecordController.UpdateParkingRecordHandler)
+			parkingRecordRoutes.DELETE("/:id", parkingRecordController.DeleteParkingRecordHandler)
+			parkingRecordRoutes.GET("", parkingRecordController.GetAllParkingRecordsHandler)
+		}
+	}
+
+	// 設定 Swagger UI 路由
+	// 存取 /swagger/index.html 可以看到 API 文件
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	return router
+}
