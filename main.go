@@ -20,6 +20,7 @@ import (
 	"hello-professor_backend/database"
 	"hello-professor_backend/routers"
 	"log"
+	"os"
 
 	"github.com/joho/godotenv"
 	// _ "hello-professor_backend/docs"
@@ -41,8 +42,14 @@ func main() {
 }
 
 func loadEnv() {
-	err := godotenv.Overload(".env")
+	// if .env file not found, skip it
+	envFile := ".env"
+	if _, err := os.Stat(envFile); os.IsNotExist(err) {
+		log.Println("無法載入 .env 檔案，跳過")
+		return
+	}
+	err := godotenv.Overload(envFile)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("無法載入 .env 檔案，跳過")
 	}
 }
