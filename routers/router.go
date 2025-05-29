@@ -15,18 +15,18 @@ func SetupRouter() *gin.Engine {
 	router := gin.Default()
 
 	// 初始化 Repositories
-	vehicleRepo := repositories.NewVehicleRepository()
+	// vehicleRepo := repositories.NewVehicleRepository() // 移除
 	transactionRepo := repositories.NewTransactionRepository()
 	parkingRecordRepo := repositories.NewParkingRecordRepository()
 
 	// 初始化 Services
-	vehicleService := services.NewVehicleService(vehicleRepo, parkingRecordRepo)
+	// vehicleService := services.NewVehicleService(vehicleRepo, parkingRecordRepo) // 移除
 	transactionService := services.NewTransactionService(transactionRepo)
-	// ParkingRecordService 需要 parkingRecordRepo 和 vehicleRepo
-	parkingRecordService := services.NewParkingRecordService(parkingRecordRepo, vehicleRepo)
+	// ParkingRecordService 不再需要 vehicleRepo
+	parkingRecordService := services.NewParkingRecordService(parkingRecordRepo) // 修改此處
 
 	// 初始化 Controllers
-	vehicleController := controllers.NewVehicleController(vehicleService)
+	// vehicleController := controllers.NewVehicleController(vehicleService) // 移除
 	transactionController := controllers.NewTransactionController(transactionService)
 	parkingRecordController := controllers.NewParkingRecordController(parkingRecordService)
 
@@ -36,17 +36,17 @@ func SetupRouter() *gin.Engine {
 	// API v1 路由群組
 	apiV1 := router.Group("/api/v1")
 	{
-		// 車輛路由
-		vehicleRoutes := apiV1.Group("/vehicles")
-		{
-			vehicleRoutes.POST("", vehicleController.CreateVehicleHandler)
-			vehicleRoutes.GET("/search", vehicleController.SearchVehiclesHandler)
-			vehicleRoutes.GET("/:id", vehicleController.GetVehicleByIDHandler)
-			vehicleRoutes.GET("/license/:plate", vehicleController.GetVehicleByLicensePlateHandler)
-			vehicleRoutes.PUT("/:id", vehicleController.UpdateVehicleHandler)
-			vehicleRoutes.DELETE("/:id", vehicleController.DeleteVehicleHandler)
-			vehicleRoutes.GET("", vehicleController.GetAllVehiclesHandler)
-		}
+		// 車輛路由 (移除)
+		// vehicleRoutes := apiV1.Group("/vehicles")
+		// {
+		// 	vehicleRoutes.POST("", vehicleController.CreateVehicleHandler)
+		// 	vehicleRoutes.GET("/search", vehicleController.SearchVehiclesHandler)
+		// 	vehicleRoutes.GET("/:id", vehicleController.GetVehicleByIDHandler)
+		// 	vehicleRoutes.GET("/license/:plate", vehicleController.GetVehicleByLicensePlateHandler)
+		// 	vehicleRoutes.PUT("/:id", vehicleController.UpdateVehicleHandler)
+		// 	vehicleRoutes.DELETE("/:id", vehicleController.DeleteVehicleHandler)
+		// 	vehicleRoutes.GET("", vehicleController.GetAllVehiclesHandler)
+		// }
 
 		// 交易路由
 		transactionRoutes := apiV1.Group("/transactions")
@@ -66,8 +66,10 @@ func SetupRouter() *gin.Engine {
 			parkingRecordRoutes.POST("/exit", parkingRecordController.RecordVehicleExitHandler)
 			parkingRecordRoutes.POST("", parkingRecordController.CreateParkingRecordHandler) // 通用建立
 			parkingRecordRoutes.GET("/:id", parkingRecordController.GetParkingRecordByIDHandler)
-			parkingRecordRoutes.GET("/vehicle/:vehicleID", parkingRecordController.GetParkingRecordsByVehicleIDHandler)
-			parkingRecordRoutes.GET("/vehicle/:vehicleID/latest", parkingRecordController.GetLatestParkingRecordByVehicleIDHandler)
+			// 修改路由以使用 licensePlate 而非 vehicleID
+			parkingRecordRoutes.GET("/license/:licensePlate", parkingRecordController.GetParkingRecordsByLicensePlateHandler)
+			parkingRecordRoutes.GET("/license/:licensePlate/latest", parkingRecordController.GetLatestParkingRecordByLicensePlateHandler)
+			parkingRecordRoutes.PATCH("/:id/verify-license-plate", parkingRecordController.UpdateUserVerifiedLicensePlateHandler)
 			parkingRecordRoutes.PUT("/:id", parkingRecordController.UpdateParkingRecordHandler)
 			parkingRecordRoutes.DELETE("/:id", parkingRecordController.DeleteParkingRecordHandler)
 			parkingRecordRoutes.GET("", parkingRecordController.GetAllParkingRecordsHandler)

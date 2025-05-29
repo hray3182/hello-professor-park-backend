@@ -161,7 +161,7 @@ const docTemplate = `{
         },
         "/parking-records/exit": {
             "post": {
-                "description": "Records when a vehicle exits the parking lot and calculates fees.",
+                "description": "Records when a vehicle exits the parking lot and calculates the fee.",
                 "consumes": [
                     "application/json"
                 ],
@@ -205,21 +205,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/parking-records/vehicle/{vehicleID}": {
+        "/parking-records/license/{licensePlate}": {
             "get": {
-                "description": "Get all parking records associated with a specific Vehicle ID",
+                "description": "Get all parking records associated with a specific License Plate",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "parking_records"
                 ],
-                "summary": "Get parking records by Vehicle ID",
+                "summary": "Get parking records by License Plate",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Vehicle ID",
-                        "name": "vehicleID",
+                        "type": "string",
+                        "description": "License Plate",
+                        "name": "licensePlate",
                         "in": "path",
                         "required": true
                     }
@@ -249,21 +249,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/parking-records/vehicle/{vehicleID}/latest": {
+        "/parking-records/license/{licensePlate}/latest": {
             "get": {
-                "description": "Get the most recent parking record for a specific Vehicle ID",
+                "description": "Get the most recent parking record for a specific License Plate",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "parking_records"
                 ],
-                "summary": "Get the latest parking record by Vehicle ID",
+                "summary": "Get the latest parking record by License Plate",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Vehicle ID",
-                        "name": "vehicleID",
+                        "type": "string",
+                        "description": "License Plate",
+                        "name": "licensePlate",
                         "in": "path",
                         "required": true
                     }
@@ -420,6 +420,65 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/{id}/verify-license-plate": {
+            "patch": {
+                "description": "Allows a user to correct or verify the license plate for an existing parking record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Update user-verified license plate for a parking record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Verified License Plate Information",
+                        "name": "license_plate_info",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.VerifyLicensePlatePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ParkingRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/dtos.ErrorResponse"
                         }
@@ -702,324 +761,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/vehicles": {
-            "get": {
-                "description": "Get a list of all vehicles, with pagination",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Get all vehicles",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 10,
-                        "description": "Limit number of vehicles returned",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset for pagination",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Vehicle"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Add a new vehicle to the system",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Create a new vehicle",
-                "parameters": [
-                    {
-                        "description": "Vehicle Information",
-                        "name": "vehicle_info",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.Vehicle"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/models.Vehicle"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vehicles/license/{plate}": {
-            "get": {
-                "description": "Get details of a vehicle by its license plate",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Get a vehicle by license plate",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "License Plate",
-                        "name": "plate",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Vehicle"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vehicles/search": {
-            "get": {
-                "description": "Search for vehicles using a partial or potentially incorrect license plate string. Returns a list of matching vehicles, each with their active parking record if any.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Search vehicles by license plate (fuzzy search)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "License plate query string",
-                        "name": "query",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 5,
-                        "description": "Limit number of results",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/dtos.VehicleSearchResult"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vehicles/{id}": {
-            "get": {
-                "description": "Get details of a vehicle by its ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Get a vehicle by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Vehicle ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.Vehicle"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Update details of an existing vehicle by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Update an existing vehicle",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Vehicle ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Vehicle Update Information",
-                        "name": "vehicle_update",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.Vehicle"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Remove a vehicle from the system by its ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "vehicles"
-                ],
-                "summary": "Delete a vehicle by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Vehicle ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/dtos.ErrorResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -1044,43 +785,28 @@ const docTemplate = `{
         "dtos.VehicleEntryExitPayload": {
             "type": "object",
             "required": [
-                "vehicleID"
+                "licensePlate"
             ],
             "properties": {
+                "licensePlate": {
+                    "type": "string",
+                    "example": "ABC-1234"
+                },
                 "sensorID": {
                     "type": "string",
                     "example": "EntrySensor001"
-                },
-                "vehicleID": {
-                    "type": "integer",
-                    "example": 1
                 }
             }
         },
-        "dtos.VehicleSearchResult": {
+        "dtos.VerifyLicensePlatePayload": {
             "type": "object",
+            "required": [
+                "licensePlate"
+            ],
             "properties": {
-                "activeParkingRecord": {
-                    "$ref": "#/definitions/models.ParkingRecord"
-                },
-                "lastSeen": {
-                    "description": "LastSeen 最後一次感應到車輛的時間",
-                    "type": "string"
-                },
                 "licensePlate": {
-                    "description": "LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌",
-                    "type": "string"
-                },
-                "parkingRecords": {
-                    "description": "GORM 模型關聯定義",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ParkingRecord"
-                    }
-                },
-                "vehicleID": {
-                    "description": "VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment",
-                    "type": "integer"
+                    "type": "string",
+                    "example": "XYZ-7890"
                 }
             }
         },
@@ -1103,6 +829,10 @@ const docTemplate = `{
                     "description": "ExitTime 出場時間，如果尚未出場則為 NULL",
                     "type": "string"
                 },
+                "licensePlate": {
+                    "description": "LicensePlate 車牌號碼 (通常來自 OCR)",
+                    "type": "string"
+                },
                 "paymentStatus": {
                     "description": "PaymentStatus 支付狀態：Pending, Paid, Refunded",
                     "type": "string"
@@ -1120,23 +850,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transaction": {
-                    "$ref": "#/definitions/models.Transaction"
+                    "description": "GORM 模型關聯定義\nVehicle     Vehicle     ` + "`" + `gorm:\"foreignKey:VehicleID\"` + "`" + ` // 移除 Vehicle 關聯",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Transaction"
+                        }
+                    ]
                 },
                 "transactionID": {
                     "description": "TransactionID 關聯到 Transactions 表的外鍵，如果尚未支付或無交易則為 NULL",
                     "type": "integer"
                 },
-                "vehicle": {
-                    "description": "GORM 模型關聯定義",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Vehicle"
-                        }
-                    ]
-                },
-                "vehicleID": {
-                    "description": "VehicleID 關聯到 Vehicles 表的外鍵",
-                    "type": "integer"
+                "userVerifiedLicensePlate": {
+                    "description": "UserVerifiedLicensePlate 使用者驗證/修正後的車牌號碼，可以為 NULL",
+                    "type": "string"
                 }
             }
         },
@@ -1170,30 +897,6 @@ const docTemplate = `{
                 "transactionTime": {
                     "description": "TransactionTime 交易時間",
                     "type": "string"
-                }
-            }
-        },
-        "models.Vehicle": {
-            "type": "object",
-            "properties": {
-                "lastSeen": {
-                    "description": "LastSeen 最後一次感應到車輛的時間",
-                    "type": "string"
-                },
-                "licensePlate": {
-                    "description": "LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌",
-                    "type": "string"
-                },
-                "parkingRecords": {
-                    "description": "GORM 模型關聯定義",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.ParkingRecord"
-                    }
-                },
-                "vehicleID": {
-                    "description": "VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment",
-                    "type": "integer"
                 }
             }
         }

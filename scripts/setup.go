@@ -21,7 +21,7 @@ func main() {
 	// 創建資料表（AutoMigrate 內部會處理順序和依賴）
 	log.Println("開始進行資料庫遷移...")
 	if err := database.AutoMigrate(
-		&models.Vehicle{},
+		// &models.Vehicle{}, // 移除 Vehicle 模型
 		&models.ParkingRecord{},
 		&models.Transaction{},
 	); err != nil {

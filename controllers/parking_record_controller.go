@@ -76,58 +76,56 @@ func (prc *ParkingRecordController) GetParkingRecordByIDHandler(c *gin.Context) 
 	c.JSON(http.StatusOK, record)
 }
 
-// GetParkingRecordsByVehicleIDHandler godoc
-// @Summary Get parking records by Vehicle ID
-// @Description Get all parking records associated with a specific Vehicle ID
+// GetParkingRecordsByLicensePlateHandler godoc
+// @Summary Get parking records by License Plate
+// @Description Get all parking records associated with a specific License Plate
 // @Tags parking_records
 // @Produce json
-// @Param vehicleID path int true "Vehicle ID"
+// @Param licensePlate path string true "License Plate"
 // @Success 200 {array} models.ParkingRecord
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
-// @Router /parking-records/vehicle/{vehicleID} [get]
-func (prc *ParkingRecordController) GetParkingRecordsByVehicleIDHandler(c *gin.Context) {
-	vehicleIDStr := c.Param("vehicleID")
-	vehicleID, err := strconv.ParseUint(vehicleIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vehicle ID format"})
+// @Router /parking-records/license/{licensePlate} [get]
+func (prc *ParkingRecordController) GetParkingRecordsByLicensePlateHandler(c *gin.Context) {
+	licensePlate := c.Param("licensePlate")
+	if licensePlate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "License plate cannot be empty"})
 		return
 	}
 
-	records, err := prc.parkingRecordService.GetParkingRecordsByVehicleID(uint(vehicleID))
+	records, err := prc.parkingRecordService.GetParkingRecordsByLicensePlate(licensePlate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get parking records by vehicle ID: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get parking records by license plate: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, records)
 }
 
-// GetLatestParkingRecordByVehicleIDHandler godoc
-// @Summary Get the latest parking record by Vehicle ID
-// @Description Get the most recent parking record for a specific Vehicle ID
+// GetLatestParkingRecordByLicensePlateHandler godoc
+// @Summary Get the latest parking record by License Plate
+// @Description Get the most recent parking record for a specific License Plate
 // @Tags parking_records
 // @Produce json
-// @Param vehicleID path int true "Vehicle ID"
+// @Param licensePlate path string true "License Plate"
 // @Success 200 {object} models.ParkingRecord
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 404 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
-// @Router /parking-records/vehicle/{vehicleID}/latest [get]
-func (prc *ParkingRecordController) GetLatestParkingRecordByVehicleIDHandler(c *gin.Context) {
-	vehicleIDStr := c.Param("vehicleID")
-	vehicleID, err := strconv.ParseUint(vehicleIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vehicle ID format"})
+// @Router /parking-records/license/{licensePlate}/latest [get]
+func (prc *ParkingRecordController) GetLatestParkingRecordByLicensePlateHandler(c *gin.Context) {
+	licensePlate := c.Param("licensePlate")
+	if licensePlate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "License plate cannot be empty"})
 		return
 	}
 
-	record, err := prc.parkingRecordService.GetLatestParkingRecordByVehicleID(uint(vehicleID))
+	record, err := prc.parkingRecordService.GetLatestParkingRecordByLicensePlate(licensePlate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get latest parking record by vehicle ID: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get latest parking record by license plate: " + err.Error()})
 		return
 	}
 	if record == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No parking record found for this vehicle"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "No parking record found for this license plate"})
 		return
 	}
 	c.JSON(http.StatusOK, record)
@@ -243,7 +241,7 @@ func (prc *ParkingRecordController) RecordVehicleEntryHandler(c *gin.Context) {
 		return
 	}
 
-	record, err := prc.parkingRecordService.RecordVehicleEntry(payload.VehicleID, payload.SensorID)
+	record, err := prc.parkingRecordService.RecordVehicleEntry(payload.LicensePlate, payload.SensorID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record vehicle entry: " + err.Error()})
 		return
@@ -253,7 +251,7 @@ func (prc *ParkingRecordController) RecordVehicleEntryHandler(c *gin.Context) {
 
 // RecordVehicleExitHandler godoc
 // @Summary Record a vehicle exit event
-// @Description Records when a vehicle exits the parking lot and calculates fees.
+// @Description Records when a vehicle exits the parking lot and calculates the fee.
 // @Tags parking_records
 // @Accept  json
 // @Produce  json
@@ -269,9 +267,54 @@ func (prc *ParkingRecordController) RecordVehicleExitHandler(c *gin.Context) {
 		return
 	}
 
-	record, err := prc.parkingRecordService.RecordVehicleExit(payload.VehicleID, payload.SensorID)
+	record, err := prc.parkingRecordService.RecordVehicleExit(payload.LicensePlate, payload.SensorID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record vehicle exit: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, record)
+}
+
+// UpdateUserVerifiedLicensePlateHandler godoc
+// @Summary Update user-verified license plate for a parking record
+// @Description Allows a user to correct or verify the license plate for an existing parking record.
+// @Tags parking_records
+// @Accept  json
+// @Produce  json
+// @Param   id path int true "Parking Record ID"
+// @Param   license_plate_info body dtos.VerifyLicensePlatePayload true "Verified License Plate Information"
+// @Success 200 {object} models.ParkingRecord
+// @Failure 400 {object} dtos.ErrorResponse
+// @Failure 404 {object} dtos.ErrorResponse
+// @Failure 500 {object} dtos.ErrorResponse
+// @Router /parking-records/{id}/verify-license-plate [patch]
+func (prc *ParkingRecordController) UpdateUserVerifiedLicensePlateHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parking record ID format"})
+		return
+	}
+
+	var payload dtos.VerifyLicensePlatePayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	if payload.LicensePlate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "License plate cannot be empty"})
+		return
+	}
+
+	record, err := prc.parkingRecordService.UpdateUserVerifiedLicensePlate(uint(id), payload.LicensePlate)
+	if err != nil {
+		// 根據錯誤類型回傳不同的狀態碼
+		if err.Error() == "parking record not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update verified license plate: " + err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, record)

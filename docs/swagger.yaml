@@ -14,33 +14,22 @@ definitions:
     type: object
   dtos.VehicleEntryExitPayload:
     properties:
+      licensePlate:
+        example: ABC-1234
+        type: string
       sensorID:
         example: EntrySensor001
         type: string
-      vehicleID:
-        example: 1
-        type: integer
     required:
-    - vehicleID
+    - licensePlate
     type: object
-  dtos.VehicleSearchResult:
+  dtos.VerifyLicensePlatePayload:
     properties:
-      activeParkingRecord:
-        $ref: '#/definitions/models.ParkingRecord'
-      lastSeen:
-        description: LastSeen 最後一次感應到車輛的時間
-        type: string
       licensePlate:
-        description: LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌
+        example: XYZ-7890
         type: string
-      parkingRecords:
-        description: GORM 模型關聯定義
-        items:
-          $ref: '#/definitions/models.ParkingRecord'
-        type: array
-      vehicleID:
-        description: VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment
-        type: integer
+    required:
+    - licensePlate
     type: object
   models.ParkingRecord:
     properties:
@@ -56,6 +45,9 @@ definitions:
       exitTime:
         description: ExitTime 出場時間，如果尚未出場則為 NULL
         type: string
+      licensePlate:
+        description: LicensePlate 車牌號碼 (通常來自 OCR)
+        type: string
       paymentStatus:
         description: PaymentStatus 支付狀態：Pending, Paid, Refunded
         type: string
@@ -69,17 +61,17 @@ definitions:
         description: SensorExitID 出場感應器記錄ID
         type: string
       transaction:
-        $ref: '#/definitions/models.Transaction'
+        allOf:
+        - $ref: '#/definitions/models.Transaction'
+        description: |-
+          GORM 模型關聯定義
+          Vehicle     Vehicle     `gorm:"foreignKey:VehicleID"` // 移除 Vehicle 關聯
       transactionID:
         description: TransactionID 關聯到 Transactions 表的外鍵，如果尚未支付或無交易則為 NULL
         type: integer
-      vehicle:
-        allOf:
-        - $ref: '#/definitions/models.Vehicle'
-        description: GORM 模型關聯定義
-      vehicleID:
-        description: VehicleID 關聯到 Vehicles 表的外鍵
-        type: integer
+      userVerifiedLicensePlate:
+        description: UserVerifiedLicensePlate 使用者驗證/修正後的車牌號碼，可以為 NULL
+        type: string
     type: object
   models.Transaction:
     properties:
@@ -104,23 +96,6 @@ definitions:
       transactionTime:
         description: TransactionTime 交易時間
         type: string
-    type: object
-  models.Vehicle:
-    properties:
-      lastSeen:
-        description: LastSeen 最後一次感應到車輛的時間
-        type: string
-      licensePlate:
-        description: LicensePlate 車牌號碼，唯一索引，確保每輛車有獨特的車牌
-        type: string
-      parkingRecords:
-        description: GORM 模型關聯定義
-        items:
-          $ref: '#/definitions/models.ParkingRecord'
-        type: array
-      vehicleID:
-        description: VehicleID 作為主鍵，GORM 會自動設為 primary_key 和 auto_increment
-        type: integer
     type: object
 host: localhost:8080
 info:
@@ -289,6 +264,46 @@ paths:
       summary: Update an existing parking record
       tags:
       - parking_records
+  /parking-records/{id}/verify-license-plate:
+    patch:
+      consumes:
+      - application/json
+      description: Allows a user to correct or verify the license plate for an existing
+        parking record.
+      parameters:
+      - description: Parking Record ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Verified License Plate Information
+        in: body
+        name: license_plate_info
+        required: true
+        schema:
+          $ref: '#/definitions/dtos.VerifyLicensePlatePayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ParkingRecord'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Update user-verified license plate for a parking record
+      tags:
+      - parking_records
   /parking-records/entry:
     post:
       consumes:
@@ -323,7 +338,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Records when a vehicle exits the parking lot and calculates fees.
+      description: Records when a vehicle exits the parking lot and calculates the
+        fee.
       parameters:
       - description: Vehicle Exit Information
         in: body
@@ -349,15 +365,15 @@ paths:
       summary: Record a vehicle exit event
       tags:
       - parking_records
-  /parking-records/vehicle/{vehicleID}:
+  /parking-records/license/{licensePlate}:
     get:
-      description: Get all parking records associated with a specific Vehicle ID
+      description: Get all parking records associated with a specific License Plate
       parameters:
-      - description: Vehicle ID
+      - description: License Plate
         in: path
-        name: vehicleID
+        name: licensePlate
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
@@ -375,18 +391,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Get parking records by Vehicle ID
+      summary: Get parking records by License Plate
       tags:
       - parking_records
-  /parking-records/vehicle/{vehicleID}/latest:
+  /parking-records/license/{licensePlate}/latest:
     get:
-      description: Get the most recent parking record for a specific Vehicle ID
+      description: Get the most recent parking record for a specific License Plate
       parameters:
-      - description: Vehicle ID
+      - description: License Plate
         in: path
-        name: vehicleID
+        name: licensePlate
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
@@ -406,7 +422,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Get the latest parking record by Vehicle ID
+      summary: Get the latest parking record by License Plate
       tags:
       - parking_records
   /transactions:
@@ -588,219 +604,6 @@ paths:
       summary: Get transactions by ParkingRecord ID
       tags:
       - transactions
-  /vehicles:
-    get:
-      description: Get a list of all vehicles, with pagination
-      parameters:
-      - default: 10
-        description: Limit number of vehicles returned
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Offset for pagination
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Vehicle'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Get all vehicles
-      tags:
-      - vehicles
-    post:
-      consumes:
-      - application/json
-      description: Add a new vehicle to the system
-      parameters:
-      - description: Vehicle Information
-        in: body
-        name: vehicle_info
-        required: true
-        schema:
-          $ref: '#/definitions/models.Vehicle'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Vehicle'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Create a new vehicle
-      tags:
-      - vehicles
-  /vehicles/{id}:
-    delete:
-      description: Remove a vehicle from the system by its ID
-      parameters:
-      - description: Vehicle ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dtos.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Delete a vehicle by ID
-      tags:
-      - vehicles
-    get:
-      description: Get details of a vehicle by its ID
-      parameters:
-      - description: Vehicle ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Vehicle'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Get a vehicle by ID
-      tags:
-      - vehicles
-    put:
-      consumes:
-      - application/json
-      description: Update details of an existing vehicle by its ID
-      parameters:
-      - description: Vehicle ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Vehicle Update Information
-        in: body
-        name: vehicle_update
-        required: true
-        schema:
-          $ref: '#/definitions/models.Vehicle'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dtos.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Update an existing vehicle
-      tags:
-      - vehicles
-  /vehicles/license/{plate}:
-    get:
-      description: Get details of a vehicle by its license plate
-      parameters:
-      - description: License Plate
-        in: path
-        name: plate
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Vehicle'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Get a vehicle by license plate
-      tags:
-      - vehicles
-  /vehicles/search:
-    get:
-      description: Search for vehicles using a partial or potentially incorrect license
-        plate string. Returns a list of matching vehicles, each with their active
-        parking record if any.
-      parameters:
-      - description: License plate query string
-        in: query
-        name: query
-        required: true
-        type: string
-      - default: 5
-        description: Limit number of results
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/dtos.VehicleSearchResult'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/dtos.ErrorResponse'
-      summary: Search vehicles by license plate (fuzzy search)
-      tags:
-      - vehicles
 schemes:
 - http
 - https

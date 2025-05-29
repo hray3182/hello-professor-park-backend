@@ -7,8 +7,10 @@ import "time"
 type ParkingRecord struct {
 	// RecordID 作為主鍵
 	RecordID uint `gorm:"primaryKey"`
-	// VehicleID 關聯到 Vehicles 表的外鍵
-	VehicleID uint `gorm:"not null"`
+	// LicensePlate 車牌號碼 (通常來自 OCR)
+	LicensePlate string `gorm:"type:varchar(20);not null;index"`
+	// UserVerifiedLicensePlate 使用者驗證/修正後的車牌號碼，可以為 NULL
+	UserVerifiedLicensePlate *string `gorm:"type:varchar(20)"`
 	// EntryTime 進場時間
 	EntryTime time.Time `gorm:"not null"`
 	// ExitTime 出場時間，如果尚未出場則為 NULL
@@ -27,6 +29,6 @@ type ParkingRecord struct {
 	SensorExitID string `gorm:"type:varchar(100)"`
 
 	// GORM 模型關聯定義
-	Vehicle     Vehicle     `gorm:"foreignKey:VehicleID"`
+	// Vehicle     Vehicle     `gorm:"foreignKey:VehicleID"` // 移除 Vehicle 關聯
 	Transaction Transaction `gorm:"foreignKey:TransactionID"`
 }

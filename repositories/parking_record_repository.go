@@ -11,11 +11,11 @@ import (
 type ParkingRecordRepository interface {
 	CreateParkingRecord(parkingRecord *models.ParkingRecord) error
 	GetParkingRecordByID(id uint) (*models.ParkingRecord, error)
-	GetParkingRecordsByVehicleID(vehicleID uint) ([]models.ParkingRecord, error)
+	GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error)
 	UpdateParkingRecord(parkingRecord *models.ParkingRecord) error
 	DeleteParkingRecord(id uint) error
 	GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error)
-	GetLatestParkingRecordByVehicleID(vehicleID uint) (*models.ParkingRecord, error)
+	GetLatestParkingRecordByLicensePlate(licensePlate string) (*models.ParkingRecord, error)
 }
 
 // parkingRecordRepository 是 ParkingRecordRepository 的 GORM 實作
@@ -37,8 +37,8 @@ func (r *parkingRecordRepository) CreateParkingRecord(parkingRecord *models.Park
 // GetParkingRecordByID 透過 ID 取得停車記錄
 func (r *parkingRecordRepository) GetParkingRecordByID(id uint) (*models.ParkingRecord, error) {
 	var record models.ParkingRecord
-	// Preload Vehicle and Transaction to get associated data
-	result := r.db.Preload("Vehicle").Preload("Transaction").First(&record, id)
+	// Preload Transaction to get associated data
+	result := r.db.Preload("Transaction").First(&record, id)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, nil // 或者回傳一個特定的 not found 錯誤
@@ -48,10 +48,14 @@ func (r *parkingRecordRepository) GetParkingRecordByID(id uint) (*models.Parking
 	return &record, nil
 }
 
-// GetParkingRecordsByVehicleID 透過 VehicleID 取得相關的所有停車記錄
-func (r *parkingRecordRepository) GetParkingRecordsByVehicleID(vehicleID uint) ([]models.ParkingRecord, error) {
+// GetParkingRecordsByLicensePlate 透過 LicensePlate 取得相關的所有停車記錄
+// 會同時比對 LicensePlate 和 UserVerifiedLicensePlate 欄位
+func (r *parkingRecordRepository) GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error) {
 	var records []models.ParkingRecord
-	result := r.db.Preload("Vehicle").Preload("Transaction").Where("vehicle_id = ?", vehicleID).Find(&records)
+	result := r.db.Preload("Transaction").
+		Where("license_plate = ? OR user_verified_license_plate = ?", licensePlate, licensePlate).
+		Order("entry_time DESC").
+		Find(&records)
 	return records, result.Error
 }
 
@@ -70,7 +74,7 @@ func (r *parkingRecordRepository) DeleteParkingRecord(id uint) error {
 // GetAllParkingRecords 取得所有停車記錄，支援分頁
 func (r *parkingRecordRepository) GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error) {
 	var records []models.ParkingRecord
-	dbQuery := r.db.Preload("Vehicle").Preload("Transaction")
+	dbQuery := r.db.Preload("Transaction")
 	if limit > 0 {
 		dbQuery = dbQuery.Limit(limit)
 	}
@@ -81,10 +85,14 @@ func (r *parkingRecordRepository) GetAllParkingRecords(limit int, offset int) ([
 	return records, result.Error
 }
 
-// GetLatestParkingRecordByVehicleID 透過 VehicleID 取得最新的停車記錄（基於 EntryTime 降序）
-func (r *parkingRecordRepository) GetLatestParkingRecordByVehicleID(vehicleID uint) (*models.ParkingRecord, error) {
+// GetLatestParkingRecordByLicensePlate 透過 LicensePlate 取得最新的停車記錄（基於 EntryTime 降序）
+// 會同時比對 LicensePlate 和 UserVerifiedLicensePlate 欄位
+func (r *parkingRecordRepository) GetLatestParkingRecordByLicensePlate(licensePlate string) (*models.ParkingRecord, error) {
 	var record models.ParkingRecord
-	result := r.db.Preload("Vehicle").Preload("Transaction").Where("vehicle_id = ?", vehicleID).Order("entry_time DESC").First(&record)
+	// 查詢條件修改為同時檢查 LicensePlate 或 UserVerifiedLicensePlate，並且 ExitTime 為 NULL (表示仍在場內)
+	result := r.db.Preload("Transaction").
+		Where("(license_plate = ? OR user_verified_license_plate = ?) AND exit_time IS NULL", licensePlate, licensePlate).
+		Order("entry_time DESC").First(&record)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return nil, nil // 或者回傳一個特定的 not found 錯誤
