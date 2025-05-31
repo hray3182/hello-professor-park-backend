@@ -1,0 +1,79 @@
+###
+### 完整停車流程測試 (車牌: FULL-FLOW)
+### 記錄 ID 預期會動態變化，請根據實際情況調整
+###
+
+# @name FullFlow_1_Entry
+# 1. 車輛進場 (FULL-FLOW) - 使用 multipart/form-data
+POST http://localhost:8080/api/v1/parking-records/entry
+# Content-Type: multipart/form-data (由客戶端工具自動設定或手動設定含 boundary)
+#
+# 表單欄位應包含:
+# - name: "licensePlate", value: "FULL-FLOW"
+# - name: "image", filename: "your_image.png" (選擇一個本地圖片檔案)
+#
+# 以下為 JSON 示意，實際請求應為 multipart/form-data
+# {
+#   "licensePlate": "FULL-FLOW",
+#   "image": (此處應為實際檔案數據，非 JSON 字串)
+# }
+
+###
+
+# @name FullFlow_1a_SearchAfterEntry
+# 1a. 進場後，搜尋該車牌最新的停車記錄
+GET http://localhost:8080/api/v1/parking-records/license/FULL-FLOW/latest
+
+###
+
+# @name FullFlow_2_VerifyLicensePlate
+# 2. 使用者驗證/修正車牌 (假設進場記錄 ID 為 10，請替換為上一步回傳的 ID)
+PATCH http://localhost:8080/api/v1/parking-records/7/verify-license-plate
+Content-Type: application/json
+
+{
+  "licensePlate": "FULL-FLOW-V" 
+}
+
+###
+
+# @name FullFlow_3_PreparePayment
+# 3. 獲取/計算停車費用 (假設記錄 ID 仍為 10)
+POST http://localhost:8080/api/v1/parking-records/6/prepare-payment
+
+###
+
+# @name FullFlow_4_Pay
+# 4. 付款 (假設記錄 ID 10，且 prepare-payment 回傳的應付金額為 15.0)
+POST http://localhost:8080/api/v1/parking-records/6/pay
+Content-Type: application/json
+
+{
+  "paymentMethod": "MobilePay",
+  "amountPaid": 0.5, 
+  "paymentReference": "TXN_FULL_FLOW_123"
+}
+
+###
+
+# @name FullFlow_5_Exit
+# 5. 車輛離場 (使用原始或驗證後的車牌 FULL-FLOW-V)
+POST http://localhost:8080/api/v1/parking-records/exit
+Content-Type: application/json
+
+{
+  "licensePlate": "FULL-FLOW-V" 
+}
+
+###
+
+# @name FullFlow_6_GetRecordAfterExit
+# 6. (可選) 離場後查詢停車記錄，確認狀態 (假設記錄 ID 10)
+GET http://localhost:8080/api/v1/parking-records/10
+
+###
+
+# @name FullFlow_7_GetTransactionsForRecord
+# 7. (可選) 查詢與此停車記錄相關的交易 (假設記錄 ID 10)
+# 注意：目前 /pay API 的交易是模擬的，此請求可能不會回傳預期的資料庫交易記錄
+GET http://localhost:8080/api/v1/transactions/parking/10 

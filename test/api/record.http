@@ -1,0 +1,78 @@
+# @name RecordVehicleEntry
+POST http://localhost:8080/api/v1/parking-records/entry
+Content-Type: application/json
+
+{
+  "licensePlate": "ABC-1234"
+}
+
+###
+
+# @name UpdateUserVerifiedLicensePlate
+PATCH http://localhost:8080/api/v1/parking-records/1/verify-license-plate
+Content-Type: application/json
+
+{
+  "licensePlate": "ABC-1234"
+}
+
+###
+
+# @name GetParkingRecordsByLicensePlate
+# 查詢與車牌 ABC-1234 相關的所有停車記錄 (包含已出場)
+GET http://localhost:8080/api/v1/parking-records/license/ABC-1234
+
+###
+
+# @name GetLatestParkingRecordByLicensePlate
+# 查詢車牌 ABC-1234 最新的仍在場內的停車記錄
+GET http://localhost:8080/api/v1/parking-records/license/ABC-1234/latest
+
+###
+
+# @name PreparePaymentForParkingRecord
+# 為 ParkingRecord ID 1 計算/準備付款資訊 (請確保 ID 1 存在且未出場未付款)
+POST http://localhost:8080/api/v1/parking-records/5/prepare-payment
+
+###
+
+# @name CreateTransactionForParkingRecord
+# 假設 ParkingRecord ID 1 的應付金額已透過 prepare-payment 確認 (例如 50.0)
+POST http://localhost:8080/api/v1/transactions
+Content-Type: application/json
+
+{
+  "parkingRecordID": 1, 
+  "amount": 50.0,
+  "paymentMethod": "CreditCard",
+  "status": "Success",
+  "paymentGatewayResponse": "Mock payment successful via Visa **** 1234"
+}
+
+###
+
+# @name RecordVehicleExit
+# 嘗試讓車牌 ABC-1234 出場
+# 注意：此請求應在對應的停車記錄已付款後才能成功
+POST http://localhost:8080/api/v1/parking-records/exit
+Content-Type: application/json
+
+{
+  "licensePlate": "ABC-1234"
+}
+
+###
+
+# @name PayForParkingRecord
+# 為 ParkingRecord ID 5 進行付款 (請確保 ID 5 已呼叫 prepare-payment 且未出場)
+# 假設 prepare-payment 後，CalculatedAmount 為 10.0 (此值應與 prepare-payment 結果一致)
+POST http://localhost:8080/api/v1/parking-records/5/pay
+Content-Type: application/json
+
+{
+  "paymentMethod": "Cash",
+  "amountPaid": 10.0,
+  "paymentReference": "Paid at counter"
+}
+
+
