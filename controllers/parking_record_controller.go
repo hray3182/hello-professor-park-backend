@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"encoding/base64"
 	"hello-professor_backend/dtos"
 	"hello-professor_backend/models"
 	"hello-professor_backend/services"
+	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,22 +30,22 @@ func NewParkingRecordController(prs services.ParkingRecordService) *ParkingRecor
 // @Accept  json
 // @Produce  json
 // @Param   parking_record_info body models.ParkingRecord true "Parking Record Information"
-// @Success 201 {object} models.ParkingRecord
+// @Success 201 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord}
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
 // @Router /parking-records [post]
 func (prc *ParkingRecordController) CreateParkingRecordHandler(c *gin.Context) {
 	var record models.ParkingRecord
 	if err := c.ShouldBindJSON(&record); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
 	if err := prc.parkingRecordService.CreateParkingRecord(&record); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create parking record: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to create parking record: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, record)
+	dtos.SendSuccessResponseWithData(c, http.StatusCreated, "Parking record created successfully.", record)
 }
 
 // GetParkingRecordByIDHandler godoc
@@ -51,7 +54,7 @@ func (prc *ParkingRecordController) CreateParkingRecordHandler(c *gin.Context) {
 // @Tags parking_records
 // @Produce  json
 // @Param   id path int true "Parking Record ID"
-// @Success 200 {object} models.ParkingRecord
+// @Success 200 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord}
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 404 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
@@ -60,20 +63,20 @@ func (prc *ParkingRecordController) GetParkingRecordByIDHandler(c *gin.Context) 
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parking record ID format"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid parking record ID format")
 		return
 	}
 
 	record, err := prc.parkingRecordService.GetParkingRecordByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get parking record: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get parking record: "+err.Error())
 		return
 	}
 	if record == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Parking record not found"})
+		dtos.SendErrorResponse(c, http.StatusNotFound, "Parking record not found")
 		return
 	}
-	c.JSON(http.StatusOK, record)
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Parking record retrieved successfully.", record)
 }
 
 // GetParkingRecordsByLicensePlateHandler godoc
@@ -82,23 +85,23 @@ func (prc *ParkingRecordController) GetParkingRecordByIDHandler(c *gin.Context) 
 // @Tags parking_records
 // @Produce json
 // @Param licensePlate path string true "License Plate"
-// @Success 200 {array} models.ParkingRecord
+// @Success 200 {object} dtos.SuccessResponseWithData{data=[]models.ParkingRecord}
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
 // @Router /parking-records/license/{licensePlate} [get]
 func (prc *ParkingRecordController) GetParkingRecordsByLicensePlateHandler(c *gin.Context) {
 	licensePlate := c.Param("licensePlate")
 	if licensePlate == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "License plate cannot be empty"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "License plate cannot be empty")
 		return
 	}
 
 	records, err := prc.parkingRecordService.GetParkingRecordsByLicensePlate(licensePlate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get parking records by license plate: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get parking records by license plate: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, records)
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Parking records retrieved successfully.", records)
 }
 
 // GetLatestParkingRecordByLicensePlateHandler godoc
@@ -107,7 +110,7 @@ func (prc *ParkingRecordController) GetParkingRecordsByLicensePlateHandler(c *gi
 // @Tags parking_records
 // @Produce json
 // @Param licensePlate path string true "License Plate"
-// @Success 200 {object} models.ParkingRecord
+// @Success 200 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord}
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 404 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
@@ -115,20 +118,20 @@ func (prc *ParkingRecordController) GetParkingRecordsByLicensePlateHandler(c *gi
 func (prc *ParkingRecordController) GetLatestParkingRecordByLicensePlateHandler(c *gin.Context) {
 	licensePlate := c.Param("licensePlate")
 	if licensePlate == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "License plate cannot be empty"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "License plate cannot be empty")
 		return
 	}
 
 	record, err := prc.parkingRecordService.GetLatestParkingRecordByLicensePlate(licensePlate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get latest parking record by license plate: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get latest parking record by license plate: "+err.Error())
 		return
 	}
 	if record == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "No parking record found for this license plate"})
+		dtos.SendErrorResponse(c, http.StatusNotFound, "No parking record found for this license plate")
 		return
 	}
-	c.JSON(http.StatusOK, record)
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Latest parking record retrieved successfully.", record)
 }
 
 // UpdateParkingRecordHandler godoc
@@ -147,23 +150,23 @@ func (prc *ParkingRecordController) UpdateParkingRecordHandler(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parking record ID format"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid parking record ID format")
 		return
 	}
 
 	var recordUpdates models.ParkingRecord
 	if err := c.ShouldBindJSON(&recordUpdates); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
 	recordUpdates.RecordID = uint(id) // 確保更新的是正確的 ID
 
 	if err := prc.parkingRecordService.UpdateParkingRecord(&recordUpdates); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update parking record: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update parking record: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Parking record updated successfully"})
+	dtos.SendSuccessResponse(c, http.StatusOK, "Parking record updated successfully")
 }
 
 // DeleteParkingRecordHandler godoc
@@ -180,15 +183,15 @@ func (prc *ParkingRecordController) DeleteParkingRecordHandler(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parking record ID format"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid parking record ID format")
 		return
 	}
 
 	if err := prc.parkingRecordService.DeleteParkingRecord(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete parking record: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete parking record: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Parking record deleted successfully"})
+	dtos.SendSuccessResponse(c, http.StatusOK, "Parking record deleted successfully")
 }
 
 // GetAllParkingRecordsHandler godoc
@@ -198,7 +201,7 @@ func (prc *ParkingRecordController) DeleteParkingRecordHandler(c *gin.Context) {
 // @Produce  json
 // @Param limit query int false "Limit number of parking records returned" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} models.ParkingRecord
+// @Success 200 {object} dtos.SuccessResponseWithData{data=[]models.ParkingRecord}
 // @Failure 500 {object} dtos.ErrorResponse
 // @Router /parking-records [get]
 func (prc *ParkingRecordController) GetAllParkingRecordsHandler(c *gin.Context) {
@@ -217,62 +220,73 @@ func (prc *ParkingRecordController) GetAllParkingRecordsHandler(c *gin.Context) 
 
 	records, err := prc.parkingRecordService.GetAllParkingRecords(limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get all parking records: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get all parking records: "+err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, records)
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "All parking records retrieved successfully.", records)
 }
 
 // RecordVehicleEntryHandler godoc
 // @Summary Record a vehicle entry event
-// @Description Records when a vehicle enters the parking lot.
+// @Description Records when a vehicle enters the parking lot, accepting license plate and an optional image file.
 // @Tags parking_records
-// @Accept  json
-// @Produce  json
-// @Param   entry_info body dtos.VehicleEntryExitPayload true "Vehicle Entry Information"
-// @Success 201 {object} models.ParkingRecord
+// @Accept multipart/form-data
+// @Produce json
+// @Param licensePlate formData string true "Vehicle License Plate" example:"ABC-1234"
+// @Param image formData file false "Optional image of the vehicle/license plate"
+// @Success 201 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord}
 // @Failure 400 {object} dtos.ErrorResponse
+// @Failure 409 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
 // @Router /parking-records/entry [post]
 func (prc *ParkingRecordController) RecordVehicleEntryHandler(c *gin.Context) {
-	var payload dtos.VehicleEntryExitPayload
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+	var payload dtos.SimpleEntryPayload
+	if err := c.ShouldBind(&payload); err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid request data: "+err.Error())
 		return
 	}
 
-	record, err := prc.parkingRecordService.RecordVehicleEntry(payload.LicensePlate, payload.SensorID)
+	if payload.LicensePlate == "" {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "License plate cannot be empty")
+		return
+	}
+
+	var imageBase64 *string
+	if payload.Image != nil {
+		file, err := payload.Image.Open()
+		if err != nil {
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to open image file: "+err.Error())
+			return
+		}
+		defer file.Close()
+
+		bytes, err := ioutil.ReadAll(file)
+		if err != nil {
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to read image file: "+err.Error())
+			return
+		}
+
+		var mimeType string
+		if len(payload.Image.Header["Content-Type"]) > 0 {
+			mimeType = payload.Image.Header["Content-Type"][0]
+		} else {
+			mimeType = "application/octet-stream"
+		}
+
+		base64Str := "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(bytes)
+		imageBase64 = &base64Str
+	}
+
+	record, err := prc.parkingRecordService.RecordSimpleVehicleEntry(payload.LicensePlate, imageBase64)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record vehicle entry: " + err.Error()})
+		if strings.Contains(err.Error(), "vehicle already in parking lot") {
+			dtos.SendErrorResponse(c, http.StatusConflict, err.Error())
+		} else {
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to record vehicle entry: "+err.Error())
+		}
 		return
 	}
-	c.JSON(http.StatusCreated, record)
-}
-
-// RecordVehicleExitHandler godoc
-// @Summary Record a vehicle exit event
-// @Description Records when a vehicle exits the parking lot and calculates the fee.
-// @Tags parking_records
-// @Accept  json
-// @Produce  json
-// @Param   exit_info body dtos.VehicleEntryExitPayload true "Vehicle Exit Information"
-// @Success 200 {object} models.ParkingRecord
-// @Failure 400 {object} dtos.ErrorResponse
-// @Failure 500 {object} dtos.ErrorResponse
-// @Router /parking-records/exit [post]
-func (prc *ParkingRecordController) RecordVehicleExitHandler(c *gin.Context) {
-	var payload dtos.VehicleEntryExitPayload
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
-		return
-	}
-
-	record, err := prc.parkingRecordService.RecordVehicleExit(payload.LicensePlate, payload.SensorID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record vehicle exit: " + err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, record)
+	dtos.SendSuccessResponseWithData(c, http.StatusCreated, "Vehicle entry recorded successfully.", record)
 }
 
 // UpdateUserVerifiedLicensePlateHandler godoc
@@ -283,7 +297,7 @@ func (prc *ParkingRecordController) RecordVehicleExitHandler(c *gin.Context) {
 // @Produce  json
 // @Param   id path int true "Parking Record ID"
 // @Param   license_plate_info body dtos.VerifyLicensePlatePayload true "Verified License Plate Information"
-// @Success 200 {object} models.ParkingRecord
+// @Success 200 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord}
 // @Failure 400 {object} dtos.ErrorResponse
 // @Failure 404 {object} dtos.ErrorResponse
 // @Failure 500 {object} dtos.ErrorResponse
@@ -292,30 +306,160 @@ func (prc *ParkingRecordController) UpdateUserVerifiedLicensePlateHandler(c *gin
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parking record ID format"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid parking record ID format")
 		return
 	}
 
 	var payload dtos.VerifyLicensePlatePayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid request body: "+err.Error())
 		return
 	}
 
 	if payload.LicensePlate == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "License plate cannot be empty"})
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "License plate cannot be empty")
 		return
 	}
 
 	record, err := prc.parkingRecordService.UpdateUserVerifiedLicensePlate(uint(id), payload.LicensePlate)
 	if err != nil {
-		// 根據錯誤類型回傳不同的狀態碼
 		if err.Error() == "parking record not found" {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			dtos.SendErrorResponse(c, http.StatusNotFound, err.Error())
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update verified license plate: " + err.Error()})
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update verified license plate: "+err.Error())
 		}
 		return
 	}
-	c.JSON(http.StatusOK, record)
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "User verified license plate updated successfully.", record)
+}
+
+// RecordVehicleExitHandler godoc
+// @Summary Record a vehicle exit event
+// @Description Records when a vehicle exits the parking lot. Checks for payment status.
+// @Tags parking_records
+// @Accept  json
+// @Produce  json
+// @Param   exit_info body dtos.SimpleEntryPayload true "Vehicle Exit Information (License Plate Only)"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord}
+// @Failure 400 {object} dtos.ErrorResponse
+// @Failure 402 {object} dtos.ErrorResponseWithRecord
+// @Failure 404 {object} dtos.ErrorResponse
+// @Failure 500 {object} dtos.ErrorResponse
+// @Router /parking-records/exit [post]
+func (prc *ParkingRecordController) RecordVehicleExitHandler(c *gin.Context) {
+	var payload dtos.SimpleEntryPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid request body: "+err.Error())
+		return
+	}
+
+	if payload.LicensePlate == "" {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "License plate cannot be empty")
+		return
+	}
+
+	record, err := prc.parkingRecordService.RecordVehicleExit(payload.LicensePlate)
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "payment_required:") {
+			response := dtos.ErrorResponseWithRecord{
+				Error: err.Error(),
+			}
+			if record != nil {
+				response.ParkingRecordID = record.RecordID
+				response.LicensePlate = record.LicensePlate
+				response.CalculatedAmount = record.CalculatedAmount
+				response.PaymentStatus = record.PaymentStatus
+				response.EntryTime = record.EntryTime
+			}
+			c.JSON(http.StatusPaymentRequired, response)
+		} else if strings.Contains(err.Error(), "no active parking record found") {
+			dtos.SendErrorResponse(c, http.StatusNotFound, err.Error())
+		} else {
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to record vehicle exit: "+err.Error())
+		}
+		return
+	}
+
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Vehicle exit recorded successfully.", record)
+}
+
+// PrepareParkingRecordForPaymentHandler godoc
+// @Summary Prepare a parking record for payment by calculating/retrieving its fee
+// @Description Calculates and stores the parking fee if not already calculated for an active parking record. Returns the record with payment details.
+// @Tags parking_records
+// @Produce  json
+// @Param   id path int true "Parking Record ID"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=models.ParkingRecord} "Successfully calculated/retrieved fee, record ready for payment"
+// @Failure 400 {object} dtos.ErrorResponse "Invalid Record ID or record already exited/paid"
+// @Failure 404 {object} dtos.ErrorResponse "Parking Record not found"
+// @Failure 500 {object} dtos.ErrorResponse "Internal server error"
+// @Router /parking-records/{id}/prepare-payment [post]
+func (prc *ParkingRecordController) PrepareParkingRecordForPaymentHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid parking record ID format")
+		return
+	}
+
+	record, err := prc.parkingRecordService.PrepareParkingRecordForPayment(uint(id))
+	if err != nil {
+		if strings.HasPrefix(err.Error(), "vehicle_exited:") || strings.HasPrefix(err.Error(), "already_paid:") {
+			dtos.SendErrorResponse(c, http.StatusBadRequest, err.Error())
+		} else if strings.Contains(err.Error(), "not found") {
+			dtos.SendErrorResponse(c, http.StatusNotFound, err.Error())
+		} else {
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Parking fee prepared successfully.", record)
+}
+
+// PayForParkingRecordHandler handles the request to pay for a parking record.
+// @Summary Pay for a parking record
+// @Description Marks a parking record as paid and ideally creates a transaction record.
+// @Tags Parking Records
+// @Accept json
+// @Produce json
+// @Param id path uint true "Parking Record ID"
+// @Param paymentPayload body dtos.ParkingPaymentPayload true "Payment Details"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=dtos.ParkingRecordWithTransactionResponse} "Payment successful"
+// @Failure 400 {object} dtos.ErrorResponse "Invalid request (e.g., validation error, amount mismatch)"
+// @Failure 402 {object} dtos.ErrorResponse "Payment required conditions not met (e.g., fee not calculated, already paid, vehicle exited)"
+// @Failure 404 {object} dtos.ErrorResponse "Parking record not found"
+// @Failure 500 {object} dtos.ErrorResponse "Internal server error"
+// @Router /parking-records/{id}/pay [post]
+func (prc *ParkingRecordController) PayForParkingRecordHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid parking record ID format")
+		return
+	}
+
+	var payload dtos.ParkingPaymentPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+		return
+	}
+
+	parkingRecord, transaction, err := prc.parkingRecordService.PayForParkingRecord(uint(id), payload)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "not found") {
+			dtos.SendErrorResponse(c, http.StatusNotFound, errMsg)
+		} else if strings.Contains(errMsg, "amount_mismatch") || strings.Contains(errMsg, "fee_not_calculated") || strings.Contains(errMsg, "already_paid") || strings.Contains(errMsg, "vehicle_exited") {
+			dtos.SendErrorResponse(c, http.StatusPaymentRequired, errMsg)
+		} else {
+			dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to process payment: "+errMsg)
+		}
+		return
+	}
+
+	response := dtos.ParkingRecordWithTransactionResponse{
+		ParkingRecord: *parkingRecord,
+		Transaction:   *transaction,
+	}
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Payment processed successfully.", response)
 }

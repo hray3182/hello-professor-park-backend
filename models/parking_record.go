@@ -31,4 +31,7 @@ type ParkingRecord struct {
 	// GORM 模型關聯定義
 	// Vehicle     Vehicle     `gorm:"foreignKey:VehicleID"` // 移除 Vehicle 關聯
 	Transaction Transaction `gorm:"foreignKey:TransactionID"`
+
+	// New fields
+	Image *string `json:"image,omitempty" gorm:"type:text"` // 新增欄位: 圖片 URL 或 Base64
 }

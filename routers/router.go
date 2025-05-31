@@ -70,6 +70,8 @@ func SetupRouter() *gin.Engine {
 			parkingRecordRoutes.GET("/license/:licensePlate", parkingRecordController.GetParkingRecordsByLicensePlateHandler)
 			parkingRecordRoutes.GET("/license/:licensePlate/latest", parkingRecordController.GetLatestParkingRecordByLicensePlateHandler)
 			parkingRecordRoutes.PATCH("/:id/verify-license-plate", parkingRecordController.UpdateUserVerifiedLicensePlateHandler)
+			parkingRecordRoutes.POST("/:id/prepare-payment", parkingRecordController.PrepareParkingRecordForPaymentHandler)
+			parkingRecordRoutes.POST("/:id/pay", parkingRecordController.PayForParkingRecordHandler)
 			parkingRecordRoutes.PUT("/:id", parkingRecordController.UpdateParkingRecordHandler)
 			parkingRecordRoutes.DELETE("/:id", parkingRecordController.DeleteParkingRecordHandler)
 			parkingRecordRoutes.GET("", parkingRecordController.GetAllParkingRecordsHandler)
