@@ -54,10 +54,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.ParkingRecord"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ParkingRecord"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -95,7 +107,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.ParkingRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -115,9 +139,9 @@ const docTemplate = `{
         },
         "/parking-records/entry": {
             "post": {
-                "description": "Records when a vehicle enters the parking lot.",
+                "description": "Records when a vehicle enters the parking lot, accepting license plate and an optional image file.",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -128,24 +152,46 @@ const docTemplate = `{
                 "summary": "Record a vehicle entry event",
                 "parameters": [
                     {
-                        "description": "Vehicle Entry Information",
-                        "name": "entry_info",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dtos.VehicleEntryExitPayload"
-                        }
+                        "type": "string",
+                        "description": "Vehicle License Plate",
+                        "name": "licensePlate",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Optional image of the vehicle/license plate",
+                        "name": "image",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.ParkingRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/dtos.ErrorResponse"
                         }
@@ -161,7 +207,7 @@ const docTemplate = `{
         },
         "/parking-records/exit": {
             "post": {
-                "description": "Records when a vehicle exits the parking lot and calculates the fee.",
+                "description": "Records when a vehicle exits the parking lot. Checks for payment status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -174,12 +220,12 @@ const docTemplate = `{
                 "summary": "Record a vehicle exit event",
                 "parameters": [
                     {
-                        "description": "Vehicle Exit Information",
+                        "description": "Vehicle Exit Information (License Plate Only)",
                         "name": "exit_info",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dtos.VehicleEntryExitPayload"
+                            "$ref": "#/definitions/dtos.SimpleEntryPayload"
                         }
                     }
                 ],
@@ -187,11 +233,35 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ParkingRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponseWithRecord"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/dtos.ErrorResponse"
                         }
@@ -228,10 +298,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.ParkingRecord"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ParkingRecord"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -272,7 +354,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ParkingRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -319,7 +413,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ParkingRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -433,6 +539,142 @@ const docTemplate = `{
                 }
             }
         },
+        "/parking-records/{id}/pay": {
+            "post": {
+                "description": "Marks a parking record as paid and ideally creates a transaction record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Parking Records"
+                ],
+                "summary": "Pay for a parking record",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payment Details",
+                        "name": "paymentPayload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ParkingPaymentPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Payment successful",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dtos.ParkingRecordWithTransactionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request (e.g., validation error, amount mismatch)",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment required conditions not met (e.g., fee not calculated, already paid, vehicle exited)",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Parking record not found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/parking-records/{id}/prepare-payment": {
+            "post": {
+                "description": "Calculates and stores the parking fee if not already calculated for an active parking record. Returns the record with payment details.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Prepare a parking record for payment by calculating/retrieving its fee",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Parking Record ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully calculated/retrieved fee, record ready for payment",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Record ID or record already exited/paid",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Parking Record not found",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/parking-records/{id}/verify-license-plate": {
             "patch": {
                 "description": "Allows a user to correct or verify the license plate for an existing parking record.",
@@ -468,7 +710,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ParkingRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.ParkingRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -767,9 +1021,127 @@ const docTemplate = `{
         "dtos.ErrorResponse": {
             "type": "object",
             "properties": {
+                "details": {
+                    "type": "string",
+                    "example": "Optional additional details"
+                },
                 "error": {
                     "type": "string",
                     "example": "Detailed error message"
+                }
+            }
+        },
+        "dtos.ErrorResponseWithRecord": {
+            "type": "object",
+            "properties": {
+                "calculatedAmount": {
+                    "type": "number"
+                },
+                "entryTime": {
+                    "description": "Assuming models.ParkingRecord.EntryTime is time.Time",
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "licensePlate": {
+                    "type": "string"
+                },
+                "parkingRecordID": {
+                    "type": "integer"
+                },
+                "paymentStatus": {
+                    "type": "string"
+                }
+            }
+        },
+        "dtos.ParkingPaymentPayload": {
+            "type": "object",
+            "required": [
+                "amountPaid",
+                "paymentMethod"
+            ],
+            "properties": {
+                "amountPaid": {
+                    "type": "number",
+                    "example": 50
+                },
+                "paymentMethod": {
+                    "type": "string",
+                    "example": "MobilePay"
+                },
+                "paymentReference": {
+                    "description": "可選，如果前端有來自支付閘道的參考ID或備註",
+                    "type": "string",
+                    "example": "TXN_REF_123XYZ"
+                }
+            }
+        },
+        "dtos.ParkingRecordWithTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "actualDurationMinutes": {
+                    "description": "ActualDurationMinutes 實際停車時長（分鐘）",
+                    "type": "integer"
+                },
+                "calculatedAmount": {
+                    "description": "CalculatedAmount 應付停車費用",
+                    "type": "number"
+                },
+                "entryTime": {
+                    "description": "EntryTime 進場時間",
+                    "type": "string"
+                },
+                "exitTime": {
+                    "description": "ExitTime 出場時間，如果尚未出場則為 NULL",
+                    "type": "string"
+                },
+                "image": {
+                    "description": "New fields",
+                    "type": "string"
+                },
+                "licensePlate": {
+                    "description": "LicensePlate 車牌號碼 (通常來自 OCR)",
+                    "type": "string"
+                },
+                "paymentStatus": {
+                    "description": "PaymentStatus 支付狀態：Pending, Paid, Refunded",
+                    "type": "string"
+                },
+                "recordID": {
+                    "description": "RecordID 作為主鍵",
+                    "type": "integer"
+                },
+                "sensorEntryID": {
+                    "description": "SensorEntryID 入場感應器記錄ID",
+                    "type": "string"
+                },
+                "sensorExitID": {
+                    "description": "SensorExitID 出場感應器記錄ID",
+                    "type": "string"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/models.Transaction"
+                },
+                "transactionID": {
+                    "description": "TransactionID 關聯到 Transactions 表的外鍵，如果尚未支付或無交易則為 NULL",
+                    "type": "integer"
+                },
+                "userVerifiedLicensePlate": {
+                    "description": "UserVerifiedLicensePlate 使用者驗證/修正後的車牌號碼，可以為 NULL",
+                    "type": "string"
+                }
+            }
+        },
+        "dtos.SimpleEntryPayload": {
+            "type": "object",
+            "required": [
+                "licensePlate"
+            ],
+            "properties": {
+                "licensePlate": {
+                    "type": "string",
+                    "example": "ABC-1234"
                 }
             }
         },
@@ -782,19 +1154,12 @@ const docTemplate = `{
                 }
             }
         },
-        "dtos.VehicleEntryExitPayload": {
+        "dtos.SuccessResponseWithData": {
             "type": "object",
-            "required": [
-                "licensePlate"
-            ],
             "properties": {
-                "licensePlate": {
-                    "type": "string",
-                    "example": "ABC-1234"
-                },
-                "sensorID": {
-                    "type": "string",
-                    "example": "EntrySensor001"
+                "data": {},
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -827,6 +1192,10 @@ const docTemplate = `{
                 },
                 "exitTime": {
                     "description": "ExitTime 出場時間，如果尚未出場則為 NULL",
+                    "type": "string"
+                },
+                "image": {
+                    "description": "New fields",
                     "type": "string"
                 },
                 "licensePlate": {
