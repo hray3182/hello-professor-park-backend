@@ -104,6 +104,31 @@ func (prc *ParkingRecordController) GetParkingRecordsByLicensePlateHandler(c *gi
 	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Parking records retrieved successfully.", records)
 }
 
+// SearchParkingRecordsByLicensePlateHandler godoc
+// @Summary Search parking records by License Plate (fuzzy search)
+// @Description Search all parking records by a partial or full License Plate (case-insensitive)
+// @Tags parking_records
+// @Produce json
+// @Param q query string true "License Plate Query"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=[]models.ParkingRecord}
+// @Failure 400 {object} dtos.ErrorResponse
+// @Failure 500 {object} dtos.ErrorResponse
+// @Router /parking-records/search/license [get]
+func (prc *ParkingRecordController) SearchParkingRecordsByLicensePlateHandler(c *gin.Context) {
+	licensePlateQuery := c.Query("q")
+	if licensePlateQuery == "" {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "License plate query parameter 'q' cannot be empty")
+		return
+	}
+
+	records, err := prc.parkingRecordService.SearchParkingRecordsByLicensePlate(licensePlateQuery)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to search parking records by license plate: "+err.Error())
+		return
+	}
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Parking records searched successfully.", records)
+}
+
 // GetLatestParkingRecordByLicensePlateHandler godoc
 // @Summary Get the latest parking record by License Plate
 // @Description Get the most recent parking record for a specific License Plate

@@ -65,6 +65,7 @@ func SetupRouter() *gin.Engine {
 			parkingRecordRoutes.POST("/entry", parkingRecordController.RecordVehicleEntryHandler)
 			parkingRecordRoutes.POST("/exit", parkingRecordController.RecordVehicleExitHandler)
 			parkingRecordRoutes.POST("", parkingRecordController.CreateParkingRecordHandler) // 通用建立
+			parkingRecordRoutes.GET("/search/license", parkingRecordController.SearchParkingRecordsByLicensePlateHandler)
 			parkingRecordRoutes.GET("/:id", parkingRecordController.GetParkingRecordByIDHandler)
 			// 修改路由以使用 licensePlate 而非 vehicleID
 			parkingRecordRoutes.GET("/license/:licensePlate", parkingRecordController.GetParkingRecordsByLicensePlateHandler)

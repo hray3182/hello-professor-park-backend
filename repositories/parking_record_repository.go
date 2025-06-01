@@ -4,6 +4,8 @@ import (
 	"hello-professor_backend/database"
 	"hello-professor_backend/models"
 
+	"strings"
+
 	"gorm.io/gorm"
 )
 
@@ -12,6 +14,7 @@ type ParkingRecordRepository interface {
 	CreateParkingRecord(parkingRecord *models.ParkingRecord) error
 	GetParkingRecordByID(id uint) (*models.ParkingRecord, error)
 	GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error)
+	SearchParkingRecordsByLicensePlate(licensePlateQuery string) ([]models.ParkingRecord, error)
 	UpdateParkingRecord(parkingRecord *models.ParkingRecord) error
 	DeleteParkingRecord(id uint) error
 	GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error)
@@ -54,6 +57,23 @@ func (r *parkingRecordRepository) GetParkingRecordsByLicensePlate(licensePlate s
 	var records []models.ParkingRecord
 	result := r.db.Preload("Transaction").
 		Where("license_plate = ? OR user_verified_license_plate = ?", licensePlate, licensePlate).
+		Order("entry_time DESC").
+		Find(&records)
+	return records, result.Error
+}
+
+// SearchParkingRecordsByLicensePlate 透過 LicensePlate 模糊搜尋相關的所有停車記錄
+// 會同時比對 LicensePlate 和 UserVerifiedLicensePlate 欄位，不區分大小寫
+func (r *parkingRecordRepository) SearchParkingRecordsByLicensePlate(licensePlateQuery string) ([]models.ParkingRecord, error) {
+	var records []models.ParkingRecord
+	// 定義相似度閾值，您可以根據需求調整這個值（0.0 到 1.0 之間）
+	const similarityThreshold = 0.3 // 例如，0.3 表示 30% 的相似度
+
+	// 將查詢字串轉換為小寫，以進行不區分大小寫的相似度比較
+	lowerLicensePlateQuery := strings.ToLower(licensePlateQuery)
+
+	result := r.db.Preload("Transaction").
+		Where("similarity(LOWER(license_plate), ?) > ? OR similarity(LOWER(user_verified_license_plate), ?) > ?", lowerLicensePlateQuery, similarityThreshold, lowerLicensePlateQuery, similarityThreshold).
 		Order("entry_time DESC").
 		Find(&records)
 	return records, result.Error

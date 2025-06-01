@@ -14,6 +14,7 @@ type ParkingRecordService interface {
 	CreateParkingRecord(parkingRecord *models.ParkingRecord) error
 	GetParkingRecordByID(id uint) (*models.ParkingRecord, error)
 	GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error)
+	SearchParkingRecordsByLicensePlate(licensePlateQuery string) ([]models.ParkingRecord, error)
 	UpdateParkingRecord(parkingRecord *models.ParkingRecord) error
 	DeleteParkingRecord(id uint) error
 	GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error)
@@ -51,6 +52,11 @@ func (s *parkingRecordService) GetParkingRecordByID(id uint) (*models.ParkingRec
 // GetParkingRecordsByLicensePlate 呼叫 repository 透過 LicensePlate 取得相關的所有停車記錄
 func (s *parkingRecordService) GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error) {
 	return s.parkingRecordRepo.GetParkingRecordsByLicensePlate(licensePlate)
+}
+
+// SearchParkingRecordsByLicensePlate 呼叫 repository 透過 LicensePlate 模糊搜尋相關的所有停車記錄
+func (s *parkingRecordService) SearchParkingRecordsByLicensePlate(licensePlateQuery string) ([]models.ParkingRecord, error) {
+	return s.parkingRecordRepo.SearchParkingRecordsByLicensePlate(licensePlateQuery)
 }
 
 // UpdateParkingRecord 呼叫 repository 來更新停車記錄
