@@ -9,7 +9,7 @@ import (
 
 // TransactionRepository 定義交易資料庫操作的介面
 type TransactionRepository interface {
-	CreateTransaction(transaction *models.Transaction) error
+	CreateTransaction(tx *gorm.DB, transaction *models.Transaction) error
 	GetTransactionByID(id uint) (*models.Transaction, error)
 	GetTransactionsByParkingRecordID(parkingRecordID uint) ([]models.Transaction, error)
 	UpdateTransaction(transaction *models.Transaction) error
@@ -28,8 +28,12 @@ func NewTransactionRepository() TransactionRepository {
 }
 
 // CreateTransaction 新增交易記錄
-func (r *transactionRepository) CreateTransaction(transaction *models.Transaction) error {
-	result := r.db.Create(transaction)
+func (r *transactionRepository) CreateTransaction(tx *gorm.DB, transaction *models.Transaction) error {
+	dbToUse := r.db
+	if tx != nil {
+		dbToUse = tx
+	}
+	result := dbToUse.Create(transaction)
 	return result.Error
 }
 

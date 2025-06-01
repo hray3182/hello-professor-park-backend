@@ -390,6 +390,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/parking-records/search/license": {
+            "get": {
+                "description": "Search all parking records by a partial or full License Plate (case-insensitive)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parking_records"
+                ],
+                "summary": "Search parking records by License Plate (fuzzy search)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "License Plate Query",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.ParkingRecord"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/parking-records/{id}": {
             "get": {
                 "description": "Get details of a parking record by its ID",
@@ -746,6 +802,218 @@ const docTemplate = `{
                 }
             }
         },
+        "/reports/operations/image-attachment-rate": {
+            "get": {
+                "description": "Calculates the percentage of vehicle entries that have an associated image.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get the rate of parking entries with images",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)",
+                        "name": "startTime",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)",
+                        "name": "endTime",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dtos.ImageAttachmentRateResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid time format",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/parking-lot/available-spots": {
+            "get": {
+                "description": "Retrieves the total capacity, occupied spots, and available spots in the parking lot.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get available parking spots",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dtos.AvailableSpotsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/revenue/total": {
+            "get": {
+                "description": "Retrieves the total revenue collected from parking fees.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get total revenue from parking fees within a time range",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)",
+                        "name": "startTime",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)",
+                        "name": "endTime",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dtos.TotalRevenueResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid time format",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/traffic/total-count": {
+            "get": {
+                "description": "Retrieves the total number of parking events (vehicle entries).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reports"
+                ],
+                "summary": "Get total parking count within a time range",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)",
+                        "name": "startTime",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)",
+                        "name": "endTime",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dtos.SuccessResponseWithData"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dtos.TotalParkingCountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid time format",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dtos.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/transactions": {
             "get": {
                 "description": "Get a list of all transactions, with pagination",
@@ -1018,6 +1286,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dtos.AvailableSpotsResponse": {
+            "type": "object",
+            "properties": {
+                "available_spots": {
+                    "type": "integer"
+                },
+                "occupied_spots": {
+                    "type": "integer"
+                },
+                "total_capacity": {
+                    "type": "integer"
+                }
+            }
+        },
         "dtos.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -1052,6 +1334,21 @@ const docTemplate = `{
                 },
                 "paymentStatus": {
                     "type": "string"
+                }
+            }
+        },
+        "dtos.ImageAttachmentRateResponse": {
+            "type": "object",
+            "properties": {
+                "attachment_rate": {
+                    "description": "Value between 0.0 and 1.0",
+                    "type": "number"
+                },
+                "entries_with_image": {
+                    "type": "integer"
+                },
+                "total_entries": {
+                    "type": "integer"
                 }
             }
         },
@@ -1160,6 +1457,26 @@ const docTemplate = `{
                 "data": {},
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "dtos.TotalParkingCountResponse": {
+            "type": "object",
+            "properties": {
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dtos.TotalRevenueResponse": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "description": "e.g., \"TWD\", \"USD\"",
+                    "type": "string"
+                },
+                "total_revenue": {
+                    "type": "number"
                 }
             }
         },

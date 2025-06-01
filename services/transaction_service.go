@@ -3,11 +3,13 @@ package services
 import (
 	"hello-professor_backend/models"
 	"hello-professor_backend/repositories"
+
+	"gorm.io/gorm"
 )
 
 // TransactionService 定義交易服務的介面
 type TransactionService interface {
-	CreateTransaction(transaction *models.Transaction) error
+	CreateTransaction(tx *gorm.DB, transaction *models.Transaction) error
 	GetTransactionByID(id uint) (*models.Transaction, error)
 	GetTransactionsByParkingRecordID(parkingRecordID uint) ([]models.Transaction, error)
 	UpdateTransaction(transaction *models.Transaction) error
@@ -26,11 +28,11 @@ func NewTransactionService(repo repositories.TransactionRepository) TransactionS
 }
 
 // CreateTransaction 呼叫 repository 來新增交易記錄
-func (s *transactionService) CreateTransaction(transaction *models.Transaction) error {
+func (s *transactionService) CreateTransaction(tx *gorm.DB, transaction *models.Transaction) error {
 	// 在此處可以加入業務邏輯，例如：
 	// - 檢查交易金額是否大於0
 	// - 根據 ParkingRecordID 檢查停車記錄是否存在等
-	return s.transactionRepo.CreateTransaction(transaction)
+	return s.transactionRepo.CreateTransaction(tx, transaction)
 }
 
 // GetTransactionByID 呼叫 repository 透過 ID 取得交易記錄

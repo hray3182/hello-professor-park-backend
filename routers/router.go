@@ -2,6 +2,7 @@ package routers
 
 import (
 	"hello-professor_backend/controllers"
+	"hello-professor_backend/database"
 	"hello-professor_backend/docs" // 匯入 swag 產生的 docs
 	"hello-professor_backend/repositories"
 	"hello-professor_backend/services"
@@ -33,7 +34,8 @@ func SetupRouter() *gin.Engine {
 	// vehicleService := services.NewVehicleService(vehicleRepo, parkingRecordRepo) // 移除
 	transactionService := services.NewTransactionService(transactionRepo)
 	// ParkingRecordService 不再需要 vehicleRepo
-	parkingRecordService := services.NewParkingRecordService(parkingRecordRepo) // 修改此處
+	// 修改此處以傳入 TransactionService 和 DB 實例
+	parkingRecordService := services.NewParkingRecordService(parkingRecordRepo, transactionService, database.GetDB())
 
 	// 初始化 Controllers
 	// vehicleController := controllers.NewVehicleController(vehicleService) // 移除

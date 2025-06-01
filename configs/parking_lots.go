@@ -8,7 +8,7 @@ const (
 	// 每單位時間的費用
 	RatePerUnit = 10
 	// 單位時間(小時)
-	UnitDurationHours = 0.5
+	UnitDurationHours = 1.0 / 60
 	// 每日最高費用
 	MaxDailyCharge = 500
 )

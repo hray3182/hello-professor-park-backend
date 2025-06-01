@@ -3,10 +3,13 @@ package services
 import (
 	"errors"
 	"fmt"
+	"hello-professor_backend/configs"
 	"hello-professor_backend/dtos"
 	"hello-professor_backend/models"
 	"hello-professor_backend/repositories"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // ParkingRecordService 定義停車記錄服務的介面
@@ -15,7 +18,7 @@ type ParkingRecordService interface {
 	GetParkingRecordByID(id uint) (*models.ParkingRecord, error)
 	GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error)
 	SearchParkingRecordsByLicensePlate(licensePlateQuery string) ([]models.ParkingRecord, error)
-	UpdateParkingRecord(parkingRecord *models.ParkingRecord) error
+	UpdateParkingRecord(tx *gorm.DB, parkingRecord *models.ParkingRecord) error
 	DeleteParkingRecord(id uint) error
 	GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error)
 	GetLatestParkingRecordByLicensePlate(licensePlate string) (*models.ParkingRecord, error)
@@ -33,13 +36,17 @@ type ParkingRecordService interface {
 
 // parkingRecordService 是 ParkingRecordService 的實作
 type parkingRecordService struct {
-	parkingRecordRepo repositories.ParkingRecordRepository
+	parkingRecordRepo  repositories.ParkingRecordRepository
+	transactionService TransactionService
+	db                 *gorm.DB
 }
 
 // NewParkingRecordService 建立一個新的 ParkingRecordService 實例
-func NewParkingRecordService(prRepo repositories.ParkingRecordRepository) ParkingRecordService {
+func NewParkingRecordService(prRepo repositories.ParkingRecordRepository, ts TransactionService, db *gorm.DB) ParkingRecordService {
 	return &parkingRecordService{
-		parkingRecordRepo: prRepo,
+		parkingRecordRepo:  prRepo,
+		transactionService: ts,
+		db:                 db,
 	}
 }
 
@@ -64,8 +71,8 @@ func (s *parkingRecordService) SearchParkingRecordsByLicensePlate(licensePlateQu
 }
 
 // UpdateParkingRecord 呼叫 repository 來更新停車記錄
-func (s *parkingRecordService) UpdateParkingRecord(parkingRecord *models.ParkingRecord) error {
-	return s.parkingRecordRepo.UpdateParkingRecord(parkingRecord)
+func (s *parkingRecordService) UpdateParkingRecord(tx *gorm.DB, parkingRecord *models.ParkingRecord) error {
+	return s.parkingRecordRepo.UpdateParkingRecord(tx, parkingRecord)
 }
 
 // DeleteParkingRecord 呼叫 repository 透過 ID 刪除停車記錄
@@ -153,7 +160,7 @@ func (s *parkingRecordService) RecordVehicleExit(licensePlate string) (*models.P
 		}
 		latestRecord.ActualDurationMinutes = actualMinutes
 
-		err = s.parkingRecordRepo.UpdateParkingRecord(latestRecord)
+		err = s.parkingRecordRepo.UpdateParkingRecord(nil, latestRecord)
 		if err != nil {
 			return nil, fmt.Errorf("error updating parking record ID %d on exit: %w", latestRecord.RecordID, err)
 		}
@@ -172,7 +179,7 @@ func (s *parkingRecordService) UpdateUserVerifiedLicensePlate(recordID uint, ver
 		return nil, errors.New("parking record not found")
 	}
 	record.UserVerifiedLicensePlate = &verifiedLicensePlate
-	if err := s.parkingRecordRepo.UpdateParkingRecord(record); err != nil {
+	if err := s.parkingRecordRepo.UpdateParkingRecord(nil, record); err != nil {
 		return nil, err
 	}
 	return record, nil
@@ -203,68 +210,94 @@ func (s *parkingRecordService) PrepareParkingRecordForPayment(recordID uint) (*m
 		actualMinutes = 0
 	}
 
-	calculatedAmount := float64(actualMinutes) * 0.5
+	// TODO: Implement proper rate calculation based on configs.RatePerUnit and configs.UnitDurationHours
+	calculatedAmount := float64(actualMinutes) * configs.RatePerUnit
 
 	record.ActualDurationMinutes = actualMinutes
 	record.CalculatedAmount = calculatedAmount
 
-	err = s.parkingRecordRepo.UpdateParkingRecord(record)
-	if err != nil {
+	if err = s.parkingRecordRepo.UpdateParkingRecord(nil, record); err != nil {
 		return nil, fmt.Errorf("error updating parking record ID %d with calculated fee: %w", recordID, err)
 	}
 
 	return record, nil
 }
 
-// PayForParkingRecord 處理特定停車記錄的支付 (簡化版，未實際調用 TransactionService)
-func (s *parkingRecordService) PayForParkingRecord(recordID uint, paymentPayload dtos.ParkingPaymentPayload) (*models.ParkingRecord, *models.Transaction, error) {
-	parkingRecord, err := s.parkingRecordRepo.GetParkingRecordByID(recordID)
+// PayForParkingRecord 處理特定停車記錄的支付
+func (s *parkingRecordService) PayForParkingRecord(recordID uint, paymentPayload dtos.ParkingPaymentPayload) (pr *models.ParkingRecord, tr *models.Transaction, err error) {
+	pr, err = s.parkingRecordRepo.GetParkingRecordByID(recordID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error finding parking record ID %d: %w", recordID, err)
+		err = fmt.Errorf("error finding parking record ID %d: %w", recordID, err)
+		return
 	}
-	if parkingRecord == nil {
-		return nil, nil, fmt.Errorf("parking record ID %d not found", recordID)
-	}
-
-	if parkingRecord.ExitTime != nil {
-		return parkingRecord, nil, fmt.Errorf("vehicle_exited: Cannot pay for an already exited record. Fee was %.2f", parkingRecord.CalculatedAmount)
-	}
-	if parkingRecord.PaymentStatus == "Paid" {
-		return parkingRecord, nil, fmt.Errorf("already_paid: Parking record ID %d is already paid.", recordID)
+	if pr == nil {
+		err = fmt.Errorf("parking record ID %d not found", recordID)
+		return
 	}
 
-	if parkingRecord.CalculatedAmount <= 0 {
-		return parkingRecord, nil, fmt.Errorf("fee_not_calculated: Fee for parking record ID %d has not been calculated. Please call prepare-payment first.", recordID)
+	if pr.ExitTime != nil {
+		err = fmt.Errorf("vehicle_exited: Cannot pay for an already exited record. Fee was %.2f", pr.CalculatedAmount)
+		return
+	}
+	if pr.PaymentStatus == "Paid" {
+		err = fmt.Errorf("already_paid: Parking record ID %d is already paid.", recordID)
+		return
 	}
 
-	if paymentPayload.AmountPaid != parkingRecord.CalculatedAmount {
-		return parkingRecord, nil, fmt.Errorf("amount_mismatch: Amount paid (%.2f) does not match calculated amount (%.2f) for parking record ID %d.", paymentPayload.AmountPaid, parkingRecord.CalculatedAmount, recordID)
+	if pr.CalculatedAmount <= 0 {
+		err = fmt.Errorf("fee_not_calculated: Fee for parking record ID %d has not been calculated. Please call prepare-payment first.", recordID)
+		return
 	}
 
-	// ** 警告：以下為簡化邏輯，未實際創建 Transaction 記錄或使用資料庫事務 **
-	// 實際應用中，應呼叫 TransactionService.CreateTransaction，該服務負責：
-	// 1. 在 DB 中創建 Transaction
-	// 2. 獲取 Transaction ID
-	// 3. 更新 ParkingRecord 的 TransactionID 和 PaymentStatus="Paid"
-	// 4. 將以上操作包含在一個資料庫事務中
-
-	parkingRecord.PaymentStatus = "Paid"
-	// parkingRecord.TransactionID = &someActualTransactionID // 這裡應該是新創建的 Transaction 的 ID
-
-	err = s.parkingRecordRepo.UpdateParkingRecord(parkingRecord)
-	if err != nil {
-		// 如果這裡失敗，但如果之前已經（假設地）創建了交易，則需要回滾邏輯
-		return parkingRecord, nil, fmt.Errorf("failed to update parking record status to Paid: %w", err)
+	if paymentPayload.AmountPaid != pr.CalculatedAmount {
+		err = fmt.Errorf("amount_mismatch: Amount paid (%.2f) does not match calculated amount (%.2f) for parking record ID %d.", paymentPayload.AmountPaid, pr.CalculatedAmount, recordID)
+		return
 	}
 
-	// 回傳一個模擬的 Transaction，因為我們沒有真的創建它
-	mockTransaction := &models.Transaction{
-		// TransactionID: someActualTransactionID, // 應該來自 DB
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		err = fmt.Errorf("failed to begin transaction: %w", tx.Error)
+		return
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			tx.Rollback()
+		} else {
+			if commitErr := tx.Commit().Error; commitErr != nil {
+				err = fmt.Errorf("failed to commit transaction: %w", commitErr)
+			}
+		}
+	}()
+
+	newTransaction := &models.Transaction{
 		ParkingRecordID:        recordID,
 		Amount:                 paymentPayload.AmountPaid,
+		TransactionTime:        time.Now(),
 		PaymentMethod:          paymentPayload.PaymentMethod,
 		Status:                 "Success",
 		PaymentGatewayResponse: paymentPayload.PaymentReference,
+	}
+
+	if err = s.transactionService.CreateTransaction(tx, newTransaction); err != nil {
+		err = fmt.Errorf("failed to create transaction record: %w", err)
+		return
+	}
+
+	pr.PaymentStatus = "Paid"
+	pr.TransactionID = &newTransaction.TransactionID
+
+	if err = s.parkingRecordRepo.UpdateParkingRecord(tx, pr); err != nil {
+		err = fmt.Errorf("failed to update parking record status to Paid: %w", err)
+		return
+	}
+
+	tr = newTransaction
+	return
+}
+
 // --- 報表服務方法 ---
 
 // GetTotalParkingCount 獲取指定時間範圍內的總停車次數

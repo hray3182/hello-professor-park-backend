@@ -1,5 +1,14 @@
 basePath: /api/v1
 definitions:
+  dtos.AvailableSpotsResponse:
+    properties:
+      available_spots:
+        type: integer
+      occupied_spots:
+        type: integer
+      total_capacity:
+        type: integer
+    type: object
   dtos.ErrorResponse:
     properties:
       details:
@@ -24,6 +33,16 @@ definitions:
         type: integer
       paymentStatus:
         type: string
+    type: object
+  dtos.ImageAttachmentRateResponse:
+    properties:
+      attachment_rate:
+        description: Value between 0.0 and 1.0
+        type: number
+      entries_with_image:
+        type: integer
+      total_entries:
+        type: integer
     type: object
   dtos.ParkingPaymentPayload:
     properties:
@@ -101,6 +120,19 @@ definitions:
       data: {}
       message:
         type: string
+    type: object
+  dtos.TotalParkingCountResponse:
+    properties:
+      total_count:
+        type: integer
+    type: object
+  dtos.TotalRevenueResponse:
+    properties:
+      currency:
+        description: e.g., "TWD", "USD"
+        type: string
+      total_revenue:
+        type: number
     type: object
   dtos.VerifyLicensePlatePayload:
     properties:
@@ -651,6 +683,169 @@ paths:
       summary: Get the latest parking record by License Plate
       tags:
       - parking_records
+  /parking-records/search/license:
+    get:
+      description: Search all parking records by a partial or full License Plate (case-insensitive)
+      parameters:
+      - description: License Plate Query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dtos.SuccessResponseWithData'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.ParkingRecord'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Search parking records by License Plate (fuzzy search)
+      tags:
+      - parking_records
+  /reports/operations/image-attachment-rate:
+    get:
+      description: Calculates the percentage of vehicle entries that have an associated
+        image.
+      parameters:
+      - description: Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)
+        in: query
+        name: startTime
+        type: string
+      - description: End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)
+        in: query
+        name: endTime
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dtos.SuccessResponseWithData'
+            - properties:
+                data:
+                  $ref: '#/definitions/dtos.ImageAttachmentRateResponse'
+              type: object
+        "400":
+          description: Invalid time format
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get the rate of parking entries with images
+      tags:
+      - reports
+  /reports/parking-lot/available-spots:
+    get:
+      description: Retrieves the total capacity, occupied spots, and available spots
+        in the parking lot.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dtos.SuccessResponseWithData'
+            - properties:
+                data:
+                  $ref: '#/definitions/dtos.AvailableSpotsResponse'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get available parking spots
+      tags:
+      - reports
+  /reports/revenue/total:
+    get:
+      description: Retrieves the total revenue collected from parking fees.
+      parameters:
+      - description: Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)
+        in: query
+        name: startTime
+        type: string
+      - description: End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)
+        in: query
+        name: endTime
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dtos.SuccessResponseWithData'
+            - properties:
+                data:
+                  $ref: '#/definitions/dtos.TotalRevenueResponse'
+              type: object
+        "400":
+          description: Invalid time format
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get total revenue from parking fees within a time range
+      tags:
+      - reports
+  /reports/traffic/total-count:
+    get:
+      description: Retrieves the total number of parking events (vehicle entries).
+      parameters:
+      - description: Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)
+        in: query
+        name: startTime
+        type: string
+      - description: End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)
+        in: query
+        name: endTime
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dtos.SuccessResponseWithData'
+            - properties:
+                data:
+                  $ref: '#/definitions/dtos.TotalParkingCountResponse'
+              type: object
+        "400":
+          description: Invalid time format
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dtos.ErrorResponse'
+      summary: Get total parking count within a time range
+      tags:
+      - reports
   /transactions:
     get:
       description: Get a list of all transactions, with pagination

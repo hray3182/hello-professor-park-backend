@@ -1,0 +1,38 @@
+###
+# Get Total Parking Count
+# Retrieves the total number of parking events (vehicle entries).
+GET http://localhost:8080/api/v1/reports/traffic/total-count
+Content-Type: application/json
+
+###
+# Get Total Parking Count with Time Range
+GET http://localhost:8080/api/v1/reports/traffic/total-count?startTime=2025-01-01T00:00:00Z&endTime=2025-12-31T23:59:59Z
+Content-Type: application/json
+
+###
+# Get Total Revenue
+# Retrieves the total revenue collected from parking fees.
+GET http://localhost:8080/api/v1/reports/revenue/total
+Content-Type: application/json
+
+###
+# Get Total Revenue with Time Range
+GET http://localhost:8080/api/v1/reports/revenue/total?startTime=2025-01-01T00:00:00Z&endTime=2025-12-31T23:59:59Z
+Content-Type: application/json
+
+###
+# Get Image Attachment Rate
+# Calculates the percentage of vehicle entries that have an associated image.
+GET http://localhost:8080/api/v1/reports/operations/image-attachment-rate
+Content-Type: application/json
+
+###
+# Get Image Attachment Rate with Time Range
+GET http://localhos:8080/api/v1/reports/operations/image-attachment-rate?startTime=2023-01-01T00:00:00Z&endTime=2023-12-31T23:59:59Z
+Content-Type: application/json
+
+###
+# Get Available Parking Spots
+# Retrieves the total capacity, occupied spots, and available spots in the parking lot.
+GET http://localhost:8080/api/v1/reports/parking-lot/available-spots
+Content-Type: application/json

@@ -189,7 +189,7 @@ func (prc *ParkingRecordController) UpdateParkingRecordHandler(c *gin.Context) {
 
 	recordUpdates.RecordID = uint(id) // 確保更新的是正確的 ID
 
-	if err := prc.parkingRecordService.UpdateParkingRecord(&recordUpdates); err != nil {
+	if err := prc.parkingRecordService.UpdateParkingRecord(nil, &recordUpdates); err != nil {
 		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update parking record: "+err.Error())
 		return
 	}
