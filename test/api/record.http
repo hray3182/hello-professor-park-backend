@@ -81,4 +81,27 @@ Content-Type: application/json
   "paymentReference": "Paid at counter"
 }
 
+###
+# Get All Parking Records (Default Pagination)
+# Retrieves a list of all parking records with default limit (10) and offset (0).
+GET http://localhost:8080/api/v1/parking-records
+Content-Type: application/json
+
+###
+# Get All Parking Records with Limit
+# Retrieves a list of parking records with a specified limit (e.g., 5) and default offset (0).
+GET http://localhost:8080/api/v1/parking-records?limit=5
+Content-Type: application/json
+
+###
+# Get All Parking Records with Limit and Offset
+# Retrieves a list of parking records with a specified limit (e.g., 5) and offset (e.g., 10).
+GET http://localhost:8080/api/v1/parking-records?limit=5&offset=10
+Content-Type: application/json
+
+###
+# Get All Parking Records (Requesting a larger limit)
+GET http://localhost:8080/api/v1/parking-records?limit=50
+Content-Type: application/json
+
 
