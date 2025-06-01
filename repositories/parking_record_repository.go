@@ -105,7 +105,7 @@ func (r *parkingRecordRepository) DeleteParkingRecord(id uint) error {
 // GetAllParkingRecords 取得所有停車記錄，支援分頁
 func (r *parkingRecordRepository) GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error) {
 	var records []models.ParkingRecord
-	dbQuery := r.db.Preload("Transaction")
+	dbQuery := r.db.Preload("Transaction").Order("entry_time DESC")
 	if limit > 0 {
 		dbQuery = dbQuery.Limit(limit)
 	}
