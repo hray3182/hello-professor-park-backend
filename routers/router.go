@@ -6,6 +6,7 @@ import (
 	"hello-professor_backend/repositories"
 	"hello-professor_backend/services"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"     // swagger embed files
 	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
@@ -13,6 +14,15 @@ import (
 
 func SetupRouter() *gin.Engine {
 	router := gin.Default()
+
+	// 配置 CORS - 允許所有來源
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AllowMethods = []string{"*"}
+	config.AllowHeaders = []string{"*"}
+	config.ExposeHeaders = []string{"*"}
+	config.AllowCredentials = true
+	router.Use(cors.New(config))
 
 	// 初始化 Repositories
 	// vehicleRepo := repositories.NewVehicleRepository() // 移除
