@@ -86,6 +86,15 @@ func SetupRouter() *gin.Engine {
 			parkingRecordRoutes.PUT("/:id", parkingRecordController.UpdateParkingRecordHandler)
 			parkingRecordRoutes.DELETE("/:id", parkingRecordController.DeleteParkingRecordHandler)
 			parkingRecordRoutes.GET("", parkingRecordController.GetAllParkingRecordsHandler)
+
+			// 新增報表路由
+			reportRoutes := apiV1.Group("/reports")
+			{
+				reportRoutes.GET("/traffic/total-count", parkingRecordController.GetTotalParkingCountHandler)
+				reportRoutes.GET("/revenue/total", parkingRecordController.GetTotalRevenueHandler)
+				reportRoutes.GET("/operations/image-attachment-rate", parkingRecordController.GetImageAttachmentRateHandler)
+				reportRoutes.GET("/parking-lot/available-spots", parkingRecordController.GetAvailableParkingSpotsHandler)
+			}
 		}
 	}
 

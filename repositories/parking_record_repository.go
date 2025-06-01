@@ -5,6 +5,7 @@ import (
 	"hello-professor_backend/models"
 
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -15,10 +16,16 @@ type ParkingRecordRepository interface {
 	GetParkingRecordByID(id uint) (*models.ParkingRecord, error)
 	GetParkingRecordsByLicensePlate(licensePlate string) ([]models.ParkingRecord, error)
 	SearchParkingRecordsByLicensePlate(licensePlateQuery string) ([]models.ParkingRecord, error)
-	UpdateParkingRecord(parkingRecord *models.ParkingRecord) error
+	UpdateParkingRecord(tx *gorm.DB, parkingRecord *models.ParkingRecord) error
 	DeleteParkingRecord(id uint) error
 	GetAllParkingRecords(limit int, offset int) ([]models.ParkingRecord, error)
 	GetLatestParkingRecordByLicensePlate(licensePlate string) (*models.ParkingRecord, error)
+
+	// --- 報表相關方法 ---
+	CountParkingRecords(startTime, endTime *time.Time) (int64, error)
+	SumPaidParkingFees(startTime, endTime *time.Time) (float64, error)
+	CountParkingRecordsWithImage(startTime, endTime *time.Time) (int64, error)
+	CountActiveParkingRecords() (int64, error)
 }
 
 // parkingRecordRepository 是 ParkingRecordRepository 的 GORM 實作
@@ -80,8 +87,12 @@ func (r *parkingRecordRepository) SearchParkingRecordsByLicensePlate(licensePlat
 }
 
 // UpdateParkingRecord 更新停車記錄
-func (r *parkingRecordRepository) UpdateParkingRecord(parkingRecord *models.ParkingRecord) error {
-	result := r.db.Save(parkingRecord)
+func (r *parkingRecordRepository) UpdateParkingRecord(tx *gorm.DB, parkingRecord *models.ParkingRecord) error {
+	dbToUse := r.db
+	if tx != nil {
+		dbToUse = tx
+	}
+	result := dbToUse.Save(parkingRecord)
 	return result.Error
 }
 
@@ -120,4 +131,65 @@ func (r *parkingRecordRepository) GetLatestParkingRecordByLicensePlate(licensePl
 		return nil, result.Error
 	}
 	return &record, nil
+}
+
+// --- 報表相關方法的實作 ---
+
+// CountParkingRecords 計算在指定時間範圍內的停車記錄總數。
+func (r *parkingRecordRepository) CountParkingRecords(startTime, endTime *time.Time) (int64, error) {
+	var count int64
+	dbQuery := r.db.Model(&models.ParkingRecord{})
+
+	if startTime != nil {
+		dbQuery = dbQuery.Where("entry_time >= ?", *startTime)
+	}
+	if endTime != nil {
+		dbQuery = dbQuery.Where("entry_time <= ?", *endTime)
+	}
+
+	err := dbQuery.Count(&count).Error
+	return count, err
+}
+
+// SumPaidParkingFees 計算在指定時間範圍內，狀態為 "Paid" 的停車記錄的總金額。
+func (r *parkingRecordRepository) SumPaidParkingFees(startTime, endTime *time.Time) (float64, error) {
+	var totalRevenue float64
+	dbQuery := r.db.Model(&models.ParkingRecord{}).Where("payment_status = ?", "Paid")
+
+	if startTime != nil {
+		dbQuery = dbQuery.Where("entry_time >= ?", *startTime) // 假設基於進場時間統計收入
+	}
+	if endTime != nil {
+		dbQuery = dbQuery.Where("entry_time <= ?", *endTime)
+	}
+
+	err := dbQuery.Select("COALESCE(SUM(calculated_amount), 0)").Row().Scan(&totalRevenue)
+	if err != nil {
+		return 0, err
+	}
+	return totalRevenue, nil
+}
+
+// CountParkingRecordsWithImage 計算在指定時間範圍內，Image 欄位不為 NULL 的停車記錄數量。
+func (r *parkingRecordRepository) CountParkingRecordsWithImage(startTime, endTime *time.Time) (int64, error) {
+	var count int64
+	dbQuery := r.db.Model(&models.ParkingRecord{}).Where("image IS NOT NULL AND image != ''")
+
+	if startTime != nil {
+		dbQuery = dbQuery.Where("entry_time >= ?", *startTime)
+	}
+	if endTime != nil {
+		dbQuery = dbQuery.Where("entry_time <= ?", *endTime)
+	}
+
+	err := dbQuery.Count(&count).Error
+	return count, err
+}
+
+// CountActiveParkingRecords 計算當前仍在場內的車輛總數 (exit_time IS NULL)。
+func (r *parkingRecordRepository) CountActiveParkingRecords() (int64, error) {
+	var count int64
+	dbQuery := r.db.Model(&models.ParkingRecord{}).Where("exit_time IS NULL")
+	err := dbQuery.Count(&count).Error
+	return count, err
 }

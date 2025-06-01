@@ -25,6 +25,10 @@ type ParkingRecordService interface {
 	UpdateUserVerifiedLicensePlate(recordID uint, verifiedLicensePlate string) (*models.ParkingRecord, error)
 	PrepareParkingRecordForPayment(recordID uint) (*models.ParkingRecord, error)
 	PayForParkingRecord(recordID uint, paymentPayload dtos.ParkingPaymentPayload) (*models.ParkingRecord, *models.Transaction, error)
+	GetTotalParkingCount(startTime, endTime *time.Time) (int64, error)
+	GetTotalRevenue(startTime, endTime *time.Time) (float64, error)
+	GetImageAttachmentRate(startTime, endTime *time.Time) (*dtos.ImageAttachmentRateResponse, error)
+	GetAvailableParkingSpots() (*dtos.AvailableSpotsResponse, error)
 }
 
 // parkingRecordService 是 ParkingRecordService 的實作
@@ -261,11 +265,61 @@ func (s *parkingRecordService) PayForParkingRecord(recordID uint, paymentPayload
 		PaymentMethod:          paymentPayload.PaymentMethod,
 		Status:                 "Success",
 		PaymentGatewayResponse: paymentPayload.PaymentReference,
-		TransactionTime:        time.Now(),
-	}
-	// parkingRecord.Transaction = *mockTransaction // 如果需要直接在 ParkingRecord 中看到關聯的 Transaction
+// --- 報表服務方法 ---
 
-	return parkingRecord, mockTransaction, nil
+// GetTotalParkingCount 獲取指定時間範圍內的總停車次數
+func (s *parkingRecordService) GetTotalParkingCount(startTime, endTime *time.Time) (int64, error) {
+	return s.parkingRecordRepo.CountParkingRecords(startTime, endTime)
+}
+
+// GetTotalRevenue 獲取指定時間範圍內的總收入
+func (s *parkingRecordService) GetTotalRevenue(startTime, endTime *time.Time) (float64, error) {
+	return s.parkingRecordRepo.SumPaidParkingFees(startTime, endTime)
+}
+
+// GetImageAttachmentRate 獲取指定時間範圍內停車記錄的圖片附件率
+func (s *parkingRecordService) GetImageAttachmentRate(startTime, endTime *time.Time) (*dtos.ImageAttachmentRateResponse, error) {
+	totalEntries, err := s.parkingRecordRepo.CountParkingRecords(startTime, endTime)
+	if err != nil {
+		return nil, fmt.Errorf("error getting total parking records for image rate: %w", err)
+	}
+
+	entriesWithImage, err := s.parkingRecordRepo.CountParkingRecordsWithImage(startTime, endTime)
+	if err != nil {
+		return nil, fmt.Errorf("error getting parking records with image for image rate: %w", err)
+	}
+
+	var attachmentRate float64
+	if totalEntries > 0 {
+		attachmentRate = float64(entriesWithImage) / float64(totalEntries)
+	}
+
+	return &dtos.ImageAttachmentRateResponse{
+		TotalEntries:     totalEntries,
+		EntriesWithImage: entriesWithImage,
+		AttachmentRate:   attachmentRate,
+	}, nil
+}
+
+// GetAvailableParkingSpots 獲取停車場總容量、已佔用車位和可用車位數量
+func (s *parkingRecordService) GetAvailableParkingSpots() (*dtos.AvailableSpotsResponse, error) {
+	totalCapacity := configs.ParkingLotCapacity
+
+	occupiedSpots, err := s.parkingRecordRepo.CountActiveParkingRecords()
+	if err != nil {
+		return nil, fmt.Errorf("error counting active parking records: %w", err)
+	}
+
+	availableSpots := int64(totalCapacity) - occupiedSpots
+	if availableSpots < 0 {
+		availableSpots = 0
+	}
+
+	return &dtos.AvailableSpotsResponse{
+		TotalCapacity:  totalCapacity,
+		OccupiedSpots:  occupiedSpots,
+		AvailableSpots: availableSpots,
+	}, nil
 }
 
 // TODO: 需要一個費率計算函式

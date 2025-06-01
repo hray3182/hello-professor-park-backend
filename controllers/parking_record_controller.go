@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,7 @@ import (
 // ParkingRecordController 定義停車記錄控制器
 type ParkingRecordController struct {
 	parkingRecordService services.ParkingRecordService
+	// reportService services.ReportService // 未來可以考慮引入專門的報表服務
 }
 
 // NewParkingRecordController 建立一個新的 ParkingRecordController 實例
@@ -487,4 +489,125 @@ func (prc *ParkingRecordController) PayForParkingRecordHandler(c *gin.Context) {
 		Transaction:   *transaction,
 	}
 	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Payment processed successfully.", response)
+}
+
+// --- 新增報表 API ---
+
+// parseTimeRangeParameters 輔助函數，用於解析時間範圍參數
+func parseTimeRangeParameters(c *gin.Context) (startTime, endTime *time.Time, err error) {
+	startTimeStr := c.Query("startTime") // e.g., "2023-01-01T00:00:00Z"
+	endTimeStr := c.Query("endTime")     // e.g., "2023-01-31T23:59:59Z"
+
+	if startTimeStr != "" {
+		st, errP := time.Parse(time.RFC3339, startTimeStr)
+		if errP != nil {
+			return nil, nil, errP
+		}
+		startTime = &st
+	}
+	if endTimeStr != "" {
+		et, errP := time.Parse(time.RFC3339, endTimeStr)
+		if errP != nil {
+			return nil, nil, errP
+		}
+		endTime = &et
+	}
+	return startTime, endTime, nil
+}
+
+// GetTotalParkingCountHandler godoc
+// @Summary Get total parking count within a time range
+// @Description Retrieves the total number of parking events (vehicle entries).
+// @Tags reports
+// @Produce json
+// @Param startTime query string false "Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)"
+// @Param endTime query string false "End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=dtos.TotalParkingCountResponse}
+// @Failure 400 {object} dtos.ErrorResponse "Invalid time format"
+// @Failure 500 {object} dtos.ErrorResponse "Internal server error"
+// @Router /reports/traffic/total-count [get]
+func (prc *ParkingRecordController) GetTotalParkingCountHandler(c *gin.Context) {
+	startTime, endTime, err := parseTimeRangeParameters(c)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid time format: "+err.Error())
+		return
+	}
+
+	count, err := prc.parkingRecordService.GetTotalParkingCount(startTime, endTime)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get total parking count: "+err.Error())
+		return
+	}
+	responseData := dtos.TotalParkingCountResponse{TotalCount: count}
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Total parking count retrieved successfully.", responseData)
+}
+
+// GetTotalRevenueHandler godoc
+// @Summary Get total revenue from parking fees within a time range
+// @Description Retrieves the total revenue collected from parking fees.
+// @Tags reports
+// @Produce json
+// @Param startTime query string false "Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)"
+// @Param endTime query string false "End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=dtos.TotalRevenueResponse}
+// @Failure 400 {object} dtos.ErrorResponse "Invalid time format"
+// @Failure 500 {object} dtos.ErrorResponse "Internal server error"
+// @Router /reports/revenue/total [get]
+func (prc *ParkingRecordController) GetTotalRevenueHandler(c *gin.Context) {
+	startTime, endTime, err := parseTimeRangeParameters(c)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid time format: "+err.Error())
+		return
+	}
+
+	revenue, err := prc.parkingRecordService.GetTotalRevenue(startTime, endTime)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get total revenue: "+err.Error())
+		return
+	}
+	responseData := dtos.TotalRevenueResponse{TotalRevenue: revenue, Currency: "TWD"} // 假設幣別為 TWD
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Total revenue retrieved successfully.", responseData)
+}
+
+// GetImageAttachmentRateHandler godoc
+// @Summary Get the rate of parking entries with images
+// @Description Calculates the percentage of vehicle entries that have an associated image.
+// @Tags reports
+// @Produce json
+// @Param startTime query string false "Start time for the report (RFC3339 format, e.g., 2023-01-01T00:00:00Z)"
+// @Param endTime query string false "End time for the report (RFC3339 format, e.g., 2023-01-31T23:59:59Z)"
+// @Success 200 {object} dtos.SuccessResponseWithData{data=dtos.ImageAttachmentRateResponse}
+// @Failure 400 {object} dtos.ErrorResponse "Invalid time format"
+// @Failure 500 {object} dtos.ErrorResponse "Internal server error"
+// @Router /reports/operations/image-attachment-rate [get]
+func (prc *ParkingRecordController) GetImageAttachmentRateHandler(c *gin.Context) {
+	startTime, endTime, err := parseTimeRangeParameters(c)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusBadRequest, "Invalid time format: "+err.Error())
+		return
+	}
+
+	rateResponse, err := prc.parkingRecordService.GetImageAttachmentRate(startTime, endTime)
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get image attachment rate: "+err.Error())
+		return
+	}
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Image attachment rate retrieved successfully.", rateResponse)
+}
+
+// GetAvailableParkingSpotsHandler godoc
+// @Summary Get available parking spots
+// @Description Retrieves the total capacity, occupied spots, and available spots in the parking lot.
+// @Tags reports
+// @Produce json
+// @Success 200 {object} dtos.SuccessResponseWithData{data=dtos.AvailableSpotsResponse}
+// @Failure 500 {object} dtos.ErrorResponse "Internal server error"
+// @Router /reports/parking-lot/available-spots [get]
+func (prc *ParkingRecordController) GetAvailableParkingSpotsHandler(c *gin.Context) {
+	spotsResponse, err := prc.parkingRecordService.GetAvailableParkingSpots()
+	if err != nil {
+		dtos.SendErrorResponse(c, http.StatusInternalServerError, "Failed to get available parking spots: "+err.Error())
+		return
+	}
+	dtos.SendSuccessResponseWithData(c, http.StatusOK, "Available parking spots retrieved successfully.", spotsResponse)
 }
