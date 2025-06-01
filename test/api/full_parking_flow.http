@@ -14,7 +14,7 @@ POST http://localhost:8080/api/v1/parking-records/entry
 #
 # 以下為 JSON 示意，實際請求應為 multipart/form-data
 # {
-#   "licensePlate": "FULL-FLOW",
+#   "LicensePlate": "FULL-FLOW",
 #   "image": (此處應為實際檔案數據，非 JSON 字串)
 # }
 
@@ -22,7 +22,8 @@ POST http://localhost:8080/api/v1/parking-records/entry
 
 # @name FullFlow_1a_SearchAfterEntry
 # 1a. 進場後，搜尋該車牌最新的停車記錄
-GET http://localhost:8080/api/v1/parking-records/license/FULL-FLOW/latest
+GET http://localhost:8080/api/v1/parking-records/license/ACQ-5486
+# GET http://localhost:8080/api/v1/parking-records/license/search?q=ACQ
 
 ###
 
@@ -39,18 +40,18 @@ Content-Type: application/json
 
 # @name FullFlow_3_PreparePayment
 # 3. 獲取/計算停車費用 (假設記錄 ID 仍為 10)
-POST http://localhost:8080/api/v1/parking-records/6/prepare-payment
+POST http://localhost:8080/api/v1/parking-records/9/prepare-payment
 
 ###
 
 # @name FullFlow_4_Pay
 # 4. 付款 (假設記錄 ID 10，且 prepare-payment 回傳的應付金額為 15.0)
-POST http://localhost:8080/api/v1/parking-records/6/pay
+POST http://localhost:8080/api/v1/parking-records/9/pay
 Content-Type: application/json
 
 {
   "paymentMethod": "MobilePay",
-  "amountPaid": 0.5, 
+  "amountPaid": 3.5, 
   "paymentReference": "TXN_FULL_FLOW_123"
 }
 
@@ -62,7 +63,7 @@ POST http://localhost:8080/api/v1/parking-records/exit
 Content-Type: application/json
 
 {
-  "licensePlate": "FULL-FLOW-V" 
+  "licensePlate": "ACQ-5486" 
 }
 
 ###
