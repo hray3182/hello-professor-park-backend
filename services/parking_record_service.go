@@ -214,7 +214,7 @@ func (s *parkingRecordService) PrepareParkingRecordForPayment(recordID uint) (*m
 	calculatedAmount := float64(actualMinutes) * configs.RatePerUnit
 
 	record.ActualDurationMinutes = actualMinutes
-	record.CalculatedAmount = calculatedAmount
+	record.CalculatedAmount = calculatedAmount + 10 //基礎費用
 
 	if err = s.parkingRecordRepo.UpdateParkingRecord(nil, record); err != nil {
 		return nil, fmt.Errorf("error updating parking record ID %d with calculated fee: %w", recordID, err)
