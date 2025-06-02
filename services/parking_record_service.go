@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ParkingRecordService 定義停車記錄服務的介面
@@ -211,10 +212,10 @@ func (s *parkingRecordService) PrepareParkingRecordForPayment(recordID uint) (*m
 	}
 
 	// TODO: Implement proper rate calculation based on configs.RatePerUnit and configs.UnitDurationHours
-	calculatedAmount := float64(actualMinutes) * configs.RatePerUnit
+	calculatedAmount := float64(actualMinutes)*configs.RatePerUnit + 10.0
 
 	record.ActualDurationMinutes = actualMinutes
-	record.CalculatedAmount = calculatedAmount + 10 //基礎費用
+	record.CalculatedAmount = calculatedAmount
 
 	if err = s.parkingRecordRepo.UpdateParkingRecord(nil, record); err != nil {
 		return nil, fmt.Errorf("error updating parking record ID %d with calculated fee: %w", recordID, err)
@@ -225,44 +226,16 @@ func (s *parkingRecordService) PrepareParkingRecordForPayment(recordID uint) (*m
 
 // PayForParkingRecord 處理特定停車記錄的支付
 func (s *parkingRecordService) PayForParkingRecord(recordID uint, paymentPayload dtos.ParkingPaymentPayload) (pr *models.ParkingRecord, tr *models.Transaction, err error) {
-	pr, err = s.parkingRecordRepo.GetParkingRecordByID(recordID)
-	if err != nil {
-		err = fmt.Errorf("error finding parking record ID %d: %w", recordID, err)
-		return
-	}
-	if pr == nil {
-		err = fmt.Errorf("parking record ID %d not found", recordID)
-		return
-	}
-
-	if pr.ExitTime != nil {
-		err = fmt.Errorf("vehicle_exited: Cannot pay for an already exited record. Fee was %.2f", pr.CalculatedAmount)
-		return
-	}
-	if pr.PaymentStatus == "Paid" {
-		err = fmt.Errorf("already_paid: Parking record ID %d is already paid.", recordID)
-		return
-	}
-
-	if pr.CalculatedAmount <= 0 {
-		err = fmt.Errorf("fee_not_calculated: Fee for parking record ID %d has not been calculated. Please call prepare-payment first.", recordID)
-		return
-	}
-
-	if paymentPayload.AmountPaid != pr.CalculatedAmount {
-		err = fmt.Errorf("amount_mismatch: Amount paid (%.2f) does not match calculated amount (%.2f) for parking record ID %d.", paymentPayload.AmountPaid, pr.CalculatedAmount, recordID)
-		return
-	}
-
 	tx := s.db.Begin()
 	if tx.Error != nil {
 		err = fmt.Errorf("failed to begin transaction: %w", tx.Error)
 		return
 	}
+
 	defer func() {
 		if p := recover(); p != nil {
 			tx.Rollback()
-			panic(p)
+			panic(p) // 重新拋出 panic
 		} else if err != nil {
 			tx.Rollback()
 		} else {
@@ -272,29 +245,75 @@ func (s *parkingRecordService) PayForParkingRecord(recordID uint, paymentPayload
 		}
 	}()
 
+	fmt.Printf("[PayForParkingRecord] Started for RecordID: %d, Amount: %.2f, Method: %s\n", recordID, paymentPayload.AmountPaid, paymentPayload.PaymentMethod)
+
+	var currentParkingRecord models.ParkingRecord
+	queryErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&currentParkingRecord, recordID).Error
+	if queryErr != nil {
+		if errors.Is(queryErr, gorm.ErrRecordNotFound) {
+			err = fmt.Errorf("parking record ID %d not found within transaction", recordID)
+			fmt.Printf("[PayForParkingRecord] Error: %v\n", err)
+			return
+		}
+		err = fmt.Errorf("error finding parking record ID %d within transaction: %w", recordID, queryErr)
+		fmt.Printf("[PayForParkingRecord] Error: %v\n", err)
+		return
+	}
+	pr = &currentParkingRecord
+	fmt.Printf("[PayForParkingRecord] Successfully fetched ParkingRecord with ID %d. LicensePlate: %s, Status: %s, CalculatedAmount: %.2f\n", pr.RecordID, pr.LicensePlate, pr.PaymentStatus, pr.CalculatedAmount)
+
+	if pr.ExitTime != nil {
+		err = fmt.Errorf("vehicle_exited: Cannot pay for an already exited record. Fee was %.2f", pr.CalculatedAmount)
+		fmt.Printf("[PayForParkingRecord] Error: %v\n", err)
+		return
+	}
+	if pr.PaymentStatus == "Paid" {
+		err = fmt.Errorf("already_paid: Parking record ID %d is already paid.", recordID)
+		fmt.Printf("[PayForParkingRecord] Error: %v\n", err)
+		return
+	}
+
+	if pr.CalculatedAmount <= 0 {
+		err = fmt.Errorf("fee_not_calculated: Fee for parking record ID %d has not been calculated. Please call prepare-payment first.", recordID)
+		fmt.Printf("[PayForParkingRecord] Error: %v\n", err)
+		return
+	}
+
+	if paymentPayload.AmountPaid != pr.CalculatedAmount {
+		err = fmt.Errorf("amount_mismatch: Amount paid (%.2f) does not match calculated amount (%.2f) for parking record ID %d.", paymentPayload.AmountPaid, pr.CalculatedAmount, recordID)
+		fmt.Printf("[PayForParkingRecord] Error: %v\n", err)
+		return
+	}
+
 	newTransaction := &models.Transaction{
-		ParkingRecordID:        recordID,
+		ParkingRecordID:        recordID, // 等同於 pr.RecordID
 		Amount:                 paymentPayload.AmountPaid,
 		TransactionTime:        time.Now(),
 		PaymentMethod:          paymentPayload.PaymentMethod,
 		Status:                 "Success",
 		PaymentGatewayResponse: paymentPayload.PaymentReference,
 	}
+	fmt.Printf("[PayForParkingRecord] Preparing to create transaction for ParkingRecordID: %d, Transaction ParkingRecordID: %d\n", pr.RecordID, newTransaction.ParkingRecordID)
 
-	if err = s.transactionService.CreateTransaction(tx, newTransaction); err != nil {
-		err = fmt.Errorf("failed to create transaction record: %w", err)
-		return
+	if createtransactionErr := s.transactionService.CreateTransaction(tx, newTransaction); createtransactionErr != nil {
+		err = fmt.Errorf("failed to create transaction record: %w", createtransactionErr)
+		fmt.Printf("[PayForParkingRecord] Error creating transaction: %v. ParkingRecordID was %d\n", err, newTransaction.ParkingRecordID)
+		return // defer 將會 rollback
 	}
+	fmt.Printf("[PayForParkingRecord] Successfully created transaction with ID: %d for ParkingRecordID: %d\n", newTransaction.TransactionID, newTransaction.ParkingRecordID)
 
 	pr.PaymentStatus = "Paid"
 	pr.TransactionID = &newTransaction.TransactionID
 
-	if err = s.parkingRecordRepo.UpdateParkingRecord(tx, pr); err != nil {
-		err = fmt.Errorf("failed to update parking record status to Paid: %w", err)
-		return
+	if updateRecordErr := s.parkingRecordRepo.UpdateParkingRecord(tx, pr); updateRecordErr != nil {
+		err = fmt.Errorf("failed to update parking record status to Paid: %w", updateRecordErr)
+		fmt.Printf("[PayForParkingRecord] Error updating parking record: %v\n", err)
+		return // defer 將會 rollback
 	}
+	fmt.Printf("[PayForParkingRecord] Successfully updated ParkingRecord ID %d to Paid. TransactionID: %d\n", pr.RecordID, *pr.TransactionID)
 
 	tr = newTransaction
+	fmt.Printf("[PayForParkingRecord] Process completed successfully for RecordID: %d\n", recordID)
 	return
 }
 
